@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confession Protocol - Test Client</title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; background-color: #111; color: #e0e0e0; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .game-container { display: flex; width: 90%; max-width: 1200px; height: 80vh; background-color: #1a1a1a; border: 1px solid #333; }
-        .character-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .character-panel img { max-width: 80%; max-height: 300px; object-fit: cover; filter: grayscale(1) brightness(0.6); }
-        .character-panel h3 { color: #ff4d4d; }
-        .interaction-panel { flex: 2; padding: 40px; border-left: 1px solid #333; border-right: 1px solid #333; display: flex; flex-direction: column; }
-        #phase-title { color: #ff4d4d; border-bottom: 1px solid #444; padding-bottom: 10px; text-align: center; }
-        #dialogue-box { background-color: #2a2a2a; border-left: 3px solid #ff4d4d; padding: 20px; margin: 20px 0; font-style: italic; flex-grow: 1; overflow-y: auto; }
+        body { font-family: 'Courier New', Courier, monospace; background-color: #111; color: #e0e0e0; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .game-container { display: flex; flex-direction: column; width: 95%; max-width: 1400px; height: 90vh; background-color: #1a1a1a; border: 1px solid #333; }
+        .main-content { display: flex; flex: 1; }
+        .character-panel { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .character-panel img { width: 80%; max-width: 250px; object-fit: contain; filter: grayscale(1) brightness(0.7); margin-bottom: 20px; }
+        .character-panel h3 { color: #ff4d4d; letter-spacing: 2px; }
+        .dialogue-box { background-color: #2a2a2a; border-left: 3px solid #ff4d4d; padding: 15px; width: 80%; min-height: 100px; font-style: italic; }
+        .interaction-panel { flex: 1.5; padding: 20px 40px; border-left: 1px solid #333; border-right: 1px solid #333; display: flex; flex-direction: column; }
+        .narrative-box { background-color: #222; border: 1px dashed #444; padding: 15px; margin-bottom: 20px; text-align: center; }
+        #phase-title { color: #ff4d4d; text-align: center; margin-bottom: 30px; }
         #choices-box button { display: block; width: 100%; padding: 15px; margin-top: 10px; font-size: 16px; background-color: #333; color: #fff; border: 1px solid #555; cursor: pointer; text-align: left; }
         #choices-box button:hover { background-color: #ff4d4d; color: #000; font-weight: bold; }
     </style>
@@ -20,41 +22,55 @@
 <body>
 
     <div class="game-container">
-        <!-- SUBJECT'S PANEL -->
-        <div class="character-panel">
-            <h3>SUBJECT 07</h3>
-            <img src="subject.jpg" alt="Subject">
-            <div id="dialogue-box">
-                <p id="dialogue-text">Connecting to the Bureau...</p>
+        <h2 id="phase-title">Loading...</h2>
+        
+        <div class="main-content">
+            <!-- SUBJECT'S PANEL -->
+            <div class="character-panel">
+                <h3>SUBJECT 07</h3>
+                <img src="subject.jpg" alt="Subject">
+                <div id="subject-dialogue-box" class="dialogue-box">
+                    <p id="subject-dialogue-text">...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- INTERACTION (PLAYER'S) PANEL -->
-        <div class="interaction-panel">
-            <h2 id="phase-title">Loading...</h2>
-            <div id="choices-box">
-                <!-- Buttons will be generated here by JavaScript -->
+            <!-- MIDDLE PANEL FOR CHOICES AND NARRATIVE -->
+            <div class="interaction-panel">
+                <div id="narrative-box" class="narrative-box">
+                    <p id="narrative-text">Connecting to the Bureau...</p>
+                </div>
+                <div id="choices-box">
+                    <!-- Buttons will be generated here -->
+                </div>
             </div>
-        </div>
 
-        <!-- AUDITOR'S PANEL -->
-        <div class="character-panel">
-            <h3>AUDITOR 07</h3>
-            <img src="auditor.jpeg" alt="Auditor">
+            <!-- AUDITOR'S PANEL -->
+            <div class="character-panel">
+                <h3>AUDITOR 07</h3>
+                <img src="auditor.jpeg" alt="Auditor">
+                <div id="auditor-dialogue-box" class="dialogue-box">
+                    <p id="auditor-dialogue-text">...</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- The JavaScript is exactly the same as before! ---
+        // Get references to ALL our new elements
         const phaseTitle = document.getElementById('phase-title');
-        const dialogueText = document.getElementById('dialogue-text');
+        const narrativeText = document.getElementById('narrative-text');
+        const subjectDialogueText = document.getElementById('subject-dialogue-text');
+        const auditorDialogueText = document.getElementById('auditor-dialogue-text');
         const choicesBox = document.getElementById('choices-box');
 
         function updateUI(gameState) {
             phaseTitle.textContent = gameState.currentPhase;
-            dialogueText.textContent = gameState.dialogue;
-            choicesBox.innerHTML = '';
-
+            
+            // Update the correct text boxes
+            narrativeText.textContent = gameState.narrativeText || "...";
+            subjectDialogueText.textContent = gameState.subjectDialogue || "...";
+            
+            choicesBox.innerHTML = ''; // Clear old choices
             gameState.availableChoices.forEach(choiceText => {
                 const button = document.createElement('button');
                 button.textContent = choiceText;
@@ -64,8 +80,13 @@
         }
 
         async function makeChoice(choiceText) {
+            // When we make a choice, display it as the Auditor's dialogue
+            auditorDialogueText.textContent = choiceText;
+            // Clear the subject's text while we wait for a response
+            subjectDialogueText.textContent = "...";
+
             const choiceData = { choiceText: choiceText };
-            const response = await fetch('/choice', {
+            const response = await fetch('/choice', { // Corrected URL
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(choiceData)
