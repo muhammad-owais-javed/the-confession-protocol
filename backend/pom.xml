@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.protocol</groupId>
-	<artifactId>confession</artifactId>
+	<artifactId>backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>confession</name>
 	<description>The Confession Protocol - (It’s not the confession they want. It’s the moment you break.)</description>
