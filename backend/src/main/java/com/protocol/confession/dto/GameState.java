@@ -5,13 +5,15 @@ import java.util.List;
 public class GameState {
 
     private String currentPhase;
-    private String dialogue;
+    private String narrativeText;
+    private String subjectDialogue;
     private List<String> availableChoices;
 
-    public GameState(String currentPhase, String dialogue, List<String> availableChoices) {
+    public GameState(String currentPhase, String narrativeText, String subjectDialogue, List<String> availableChoices) {
         
         this.currentPhase = currentPhase;
-        this.dialogue = dialogue;
+        this.narrativeText = narrativeText;
+        this.subjectDialogue = subjectDialogue;
         this.availableChoices = availableChoices;
 
     }
@@ -19,9 +21,14 @@ public class GameState {
     public String getCurrentPhase() {
         return currentPhase;
     }
+
+    public String getNarrativeText() {
+        return narrativeText;
+    }
+
     
-    public String getDialogue() {
-        return dialogue;
+    public String getSubjectDialogue() {
+        return subjectDialogue;
     }
 
     public List<String> getAvailableChoices() {

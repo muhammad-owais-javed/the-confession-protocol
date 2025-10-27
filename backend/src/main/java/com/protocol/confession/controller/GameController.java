@@ -17,14 +17,15 @@ public class GameController {
     public GameState startGame() {
 
         String phase = "Phase 1 - The Interview";
-        String openingDialogue = "You enter the room. The Subject sits calmly, hands resting on the table. They look up as you enter. Something in their eyes—recognition? No. Impossible.";
+        String narrative = "You enter the room. The Subject sits calmly, hands resting on the table. They look up as you enter. Something in their eyes—recognition? No. Impossible.";
+        String subjectDialogue = "..."; // The subject is silent initially
         List<String> choices = List.of(
             "\"You understand why you're here?\"",
             "\"Let's start with your name.\"",
             "[Say nothing and wait]"
         );
 
-        return new GameState(phase, openingDialogue, choices);
+        return new GameState(phase, narrative, subjectDialogue, choices);
 
     }
 
@@ -33,23 +34,25 @@ public class GameController {
 
         String chosenText = playerChoice.getChoiceText();
         String nextPhase = "Phase 1 - The Interview";
-        String nextDialogue;
+        String nextNarrative = "";
+        String nextSubjectDialogue;
         List<String> nextChoices;
 
         if (chosenText.contains("understand why you're here")) {
-        nextDialogue = "Subject: \"I understand why *you* think I'm here.\"";
-        nextChoices = List.of("\"Then you admit involvement.\"", "\"Don't play games with me.\"");
+            nextNarrative = "The Subject's voice is calm, measured. It holds no trace of fear.";
+            nextSubjectDialogue = "I understand why *you* think I'm here.";
+            nextChoices = List.of("\"Then you admit involvement.\"", "\"Don't play games with me.\"");
         } else if (chosenText.contains("your name")) {
-        nextDialogue = "Subject: \"A name is a label. It doesn't define what's inside. Wouldn't you agree, Auditor?\"";
-        nextChoices = List.of("\"Just answer the question.\"", "\"What do you mean by that?\"");
+            nextNarrative = "They lean forward slightly, their eyes fixed on yours.";
+            nextSubjectDialogue = "A name is a label. It doesn't define what's inside. Wouldn't you agree, Auditor?";
+            nextChoices = List.of("\"Just answer the question.\"", "\"What do you mean by that?\"");
         } else {
-        // Default response for "[Say nothing and wait]" or any other choice
-        nextDialogue = "The Subject smiles faintly, a knowing look in their eyes. The silence stretches.";
-        nextChoices = List.of("\"The security breach occurred at 0347 hours. Where were you?\"", "\"Let's try this again.\"");
+            nextNarrative = "The Subject smiles faintly, a knowing look in their eyes. The silence stretches, becoming a weapon in its own right.";
+            nextSubjectDialogue = "..."; // The subject remains silent
+            nextChoices = List.of("\"The security breach occurred at 0347 hours. Where were you?\"", "\"Let's try this again.\"");
         }
 
-        return new GameState(nextPhase, nextDialogue, nextChoices);
-
+        return new GameState(nextPhase, nextNarrative, nextSubjectDialogue, nextChoices);
     }
 
 
