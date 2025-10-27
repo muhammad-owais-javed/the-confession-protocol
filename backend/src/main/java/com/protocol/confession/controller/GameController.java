@@ -2,8 +2,11 @@ package com.protocol.confession.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import com.protocol.confession.dto.GameState;
+import com.protocol.confession.dto.PlayerChoice;
 
 import java.util.List;
 
@@ -21,9 +24,35 @@ public class GameController {
             "[Say nothing and wait]"
         );
 
-
-
         return new GameState(phase, openingDialogue, choices);
+
     }
 
+    @PostMapping("/choose")
+    public GameState makeChoice(@RequestBody PlayerChoice playerChoice) {
+
+        String chosenText = playerChoice.getChoiceText();
+        String nextPhase = "Phase 1 - The Interview";
+        String nextDialogue;
+        List<String> nextChoices;
+
+        if (chosenText.contains("understand why you're here")) {
+        nextDialogue = "Subject: \"I understand why *you* think I'm here.\"";
+        nextChoices = List.of("\"Then you admit involvement.\"", "\"Don't play games with me.\"");
+        } else if (chosenText.contains("your name")) {
+        nextDialogue = "Subject: \"A name is a label. It doesn't define what's inside. Wouldn't you agree, Auditor?\"";
+        nextChoices = List.of("\"Just answer the question.\"", "\"What do you mean by that?\"");
+        } else {
+        // Default response for "[Say nothing and wait]" or any other choice
+        nextDialogue = "The Subject smiles faintly, a knowing look in their eyes. The silence stretches.";
+        nextChoices = List.of("\"The security breach occurred at 0347 hours. Where were you?\"", "\"Let's try this again.\"");
+        }
+
+        return new GameState(nextPhase, nextDialogue, nextChoices);
+
+    }
+
+
 }
+
+
