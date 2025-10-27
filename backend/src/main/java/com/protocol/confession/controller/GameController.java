@@ -28,7 +28,7 @@ public class GameController {
 
     }
 
-    @PostMapping("/choose")
+    @PostMapping("/choice")
     public GameState makeChoice(@RequestBody PlayerChoice playerChoice) {
 
         String chosenText = playerChoice.getChoiceText();
