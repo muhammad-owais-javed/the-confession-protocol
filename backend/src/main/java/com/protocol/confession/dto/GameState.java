@@ -9,6 +9,10 @@ public class GameState {
     private String subjectDialogue;
     private List<String> availableChoices;
 
+    // Making default constructor to avoid serialization scenarios failure
+     public GameState() {
+    }   
+    
     public GameState(String currentPhase, String narrativeText, String subjectDialogue, List<String> availableChoices) {
         
         this.currentPhase = currentPhase;
