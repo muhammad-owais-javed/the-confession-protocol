@@ -1,5 +1,6 @@
 package com.protocol.confession.services;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -7,6 +8,8 @@ import org.slf4j.helpers.CheckReturnValue;
 import org.springframework.stereotype.Service;
 
 import com.protocol.confession.dto.GameState;
+import com.protocol.confession.dto.ConversationHistory;
+
 
 @Service
 public class GameService {
@@ -23,10 +26,10 @@ public class GameService {
             "[Say nothing and wait]"
         );
 
-        return new GameState(phase, narrative, subjectDialogue, choices);
+        return new GameState(phase, narrative, subjectDialogue, choices, new ArrayList<>());
     }
 
-    public GameState processPlayerChoice(String chosenText) {
+    public GameState processPlayerChoice(String chosenText, List<ConversationHistory> currentHistory) {
         String nextPhase = "Phase 1 - The Interview";
         String nextNarrative = "";
         String nextSubjectDialogue;
@@ -51,7 +54,16 @@ public class GameService {
             nextChoices = List.of("\"Let's try this again.\"", "\"What are you smiling about?\"");
         }
 
-        return new GameState(nextPhase, nextNarrative, nextSubjectDialogue, nextChoices);
+        ConversationHistory newTurn = new ConversationHistory (
+            chosenText,              
+            nextSubjectDialogue,    
+            nextNarrative            
+        );
+
+        List<ConversationHistory> updatedHistory = new ArrayList<>(currentHistory);  
+        updatedHistory.add(newTurn);
+
+        return new GameState(nextPhase, nextNarrative, nextSubjectDialogue, nextChoices, updatedHistory);
     }
     
 }
