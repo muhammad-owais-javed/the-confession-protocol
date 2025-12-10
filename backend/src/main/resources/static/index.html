@@ -1,29 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confession Protocol - Test Client</title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; background-color: #111; color: #e0e0e0; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .game-container { display: flex; flex-direction: column; width: 95%; max-width: 1400px; height: 90vh; background-color: #1a1a1a; border: 1px solid #333; }
-        .main-content { display: flex; flex: 1; }
-        .character-panel { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .character-panel img { width: 80%; max-width: 250px; object-fit: contain; filter: grayscale(1) brightness(0.7); margin-bottom: 20px; }
-        .character-panel h3 { color: #ff4d4d; letter-spacing: 2px; }
-        .dialogue-box { background-color: #2a2a2a; border-left: 3px solid #ff4d4d; padding: 15px; width: 80%; min-height: 100px; font-style: italic; }
-        .interaction-panel { flex: 1.5; padding: 20px 40px; border-left: 1px solid #333; border-right: 1px solid #333; display: flex; flex-direction: column; }
-        .narrative-box { background-color: #222; border: 1px dashed #444; padding: 15px; margin-bottom: 20px; text-align: center; }
-        #phase-title { color: #ff4d4d; text-align: center; margin-bottom: 30px; }
-        #choices-box button { display: block; width: 100%; padding: 15px; margin-top: 10px; font-size: 16px; background-color: #333; color: #fff; border: 1px solid #555; cursor: pointer; text-align: left; }
-        #choices-box button:hover { background-color: #ff4d4d; color: #000; font-weight: bold; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #111;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            width: 95%;
+            max-width: 1400px;
+            height: 90vh;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+        }
+
+        .character-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .character-panel img {
+            width: 80%;
+            max-width: 250px;
+            object-fit: contain;
+            filter: grayscale(1) brightness(0.7);
+            margin-bottom: 20px;
+        }
+
+        .character-panel h3 {
+            color: #ff4d4d;
+            letter-spacing: 2px;
+        }
+
+        .dialogue-box {
+            background-color: #2a2a2a;
+            border-left: 3px solid #ff4d4d;
+            padding: 15px;
+            width: 80%;
+            min-height: 100px;
+            font-style: italic;
+        }
+
+        .interaction-panel {
+            flex: 1.5;
+            padding: 20px 40px;
+            border-left: 1px solid #333;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .narrative-box {
+            background-color: #222;
+            border: 1px dashed #444;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #phase-title {
+            color: #ff4d4d;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #choices-box button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-top: 10px;
+            font-size: 16px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        #choices-box button:hover {
+            background-color: #ff4d4d;
+            color: #000;
+            font-weight: bold;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="game-container">
         <h2 id="phase-title">Loading...</h2>
-        
+
         <div class="main-content">
             <!-- SUBJECT'S PANEL -->
             <div class="character-panel">
@@ -65,11 +153,11 @@
 
         function updateUI(gameState) {
             phaseTitle.textContent = gameState.currentPhase;
-            
+
             // Update the correct text boxes
             narrativeText.textContent = gameState.narrativeText || "...";
             subjectDialogueText.textContent = gameState.subjectDialogue || "...";
-            
+
             choicesBox.innerHTML = ''; // Clear old choices
             gameState.availableChoices.forEach(choiceText => {
                 const button = document.createElement('button');
@@ -79,29 +167,53 @@
             });
         }
 
-        async function makeChoice(choiceText) {
-            // When we make a choice, display it as the Auditor's dialogue
+        let currentGameState = null;
+
+            async function makeChoice(choiceText) {
             auditorDialogueText.textContent = choiceText;
-            // Clear the subject's text while we wait for a response
             subjectDialogueText.textContent = "...";
 
-            const choiceData = { choiceText: choiceText };
-            const response = await fetch('/choice', { // Corrected URL
+            // Create a copy of current state and add the chosen text
+            const gameStateToSend = {
+                ...currentGameState,
+                availableChoices: [choiceText]  // Set the chosen text as a choice
+            };
+
+            const response = await fetch('/choice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(choiceData)
+                body: JSON.stringify(gameStateToSend)  // Send entire GameState!
             });
             const newGameState = await response.json();
+            currentGameState = newGameState;  // Store new state
             updateUI(newGameState);
         }
 
-        async function startGame() {
-            const response = await fetch('/start');
-            const initialGameState = await response.json();
-            updateUI(initialGameState);
-        }
+        function updateUI(gameState) {
+    currentGameState = gameState;  // Store the state
+    
+    phaseTitle.textContent = gameState.currentPhase;
+    narrativeText.textContent = gameState.narrativeText || "...";
+    subjectDialogueText.textContent = gameState.subjectDialogue || "...";
+    
+    choicesBox.innerHTML = '';
+    gameState.availableChoices.forEach(choiceText => {
+        const button = document.createElement('button');
+        button.textContent = choiceText;
+        button.onclick = () => makeChoice(choiceText);
+        choicesBox.appendChild(button);
+    });
+}
+
+async function startGame() {
+    const response = await fetch('/start');
+    const initialGameState = await response.json();
+    currentGameState = initialGameState;  // Store initial state
+    updateUI(initialGameState);
+}
 
         startGame();
     </script>
 </body>
+
 </html>

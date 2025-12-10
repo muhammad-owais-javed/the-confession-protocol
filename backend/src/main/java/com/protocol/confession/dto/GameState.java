@@ -73,4 +73,9 @@ public class GameState {
         this.conversationHistory = conversationHistory;
     }
     
+
+
+    public GameState(String currentPhase, List<String> availableChoices){
+        this(currentPhase,"", "...", availableChoices, new ArrayList<>());
+    }
 }
