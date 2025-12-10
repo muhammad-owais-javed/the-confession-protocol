@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.protocol.confession.dto.GameScene;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +11,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 @Service
 public class StoryLoader {
@@ -75,7 +75,7 @@ public class StoryLoader {
 
         public GameScene getScene(String sceneId) {
         
-            if (isLoaded == faalse) {
+            if (isLoaded == false) {
                 loadStory();
             }
 
