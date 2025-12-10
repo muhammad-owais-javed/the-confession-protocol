@@ -21,3 +21,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+#Directory
+backend/src/main/resources/game-story.json
+backend/target/classes/game-story.json
