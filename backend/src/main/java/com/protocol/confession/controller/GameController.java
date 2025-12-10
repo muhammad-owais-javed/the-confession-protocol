@@ -28,10 +28,10 @@ public class GameController {
     }
 
     @PostMapping("/choice")
-    public GameState makeChoice(@RequestBody PlayerChoice playerChoice) {
+    public GameState makeChoice(@RequestBody GameState gameState) {
 
-        String chosenText = playerChoice.getChoiceText();
-        return gameService.processPlayerChoice(chosenText);
+        String chosenText = gameState.getAvailableChoices().get(0);
+        return gameService.processPlayerChoice(chosenText, gameState.getConversationHistory());
 
     }
 
