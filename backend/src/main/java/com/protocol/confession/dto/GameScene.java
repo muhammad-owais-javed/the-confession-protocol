@@ -14,6 +14,9 @@ public class GameScene {
     private String subjectDialogue;
     private List<GameChoice> choices;
 
+    private String currentSceneId;
+
+
     public GameScene() {
     }
 
@@ -63,5 +66,13 @@ public class GameScene {
 
     public void setChoices(List<GameChoice> choices) {
         this.choices = choices;
+    }
+
+    public String getCurrentSceneId() {
+        return currentSceneId;
+    }
+
+    public void setCurrentSceneId(String currentSceneId) {
+    this.currentSceneId = currentSceneId;
     }
 }

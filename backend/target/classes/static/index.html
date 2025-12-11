@@ -169,25 +169,24 @@
 
         let currentGameState = null;
 
-            async function makeChoice(choiceText) {
-            auditorDialogueText.textContent = choiceText;
-            subjectDialogueText.textContent = "...";
+           async function makeChoice(choiceText) {
+    auditorDialogueText.textContent = choiceText;
+    subjectDialogueText.textContent = "...";
 
-            // Create a copy of current state and add the chosen text
-            const gameStateToSend = {
-                ...currentGameState,
-                availableChoices: [choiceText]  // Set the chosen text as a choice
-            };
+    const gameStateToSend = {
+        ...currentGameState,
+        chosenText: choiceText  // Send the actual choice
+    };
 
-            const response = await fetch('/choice', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(gameStateToSend)  // Send entire GameState!
-            });
-            const newGameState = await response.json();
-            currentGameState = newGameState;  // Store new state
-            updateUI(newGameState);
-        }
+    const response = await fetch('/choice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(gameStateToSend)
+    });
+    const newGameState = await response.json();
+    currentGameState = newGameState;
+    updateUI(newGameState);
+}
 
         function updateUI(gameState) {
     currentGameState = gameState;  // Store the state

@@ -54,6 +54,8 @@ public class StoryLoader {
                 for (Map<String, Object> sceneData : scenes) {
                     // Convert map to GameScene object
                     GameScene scene = mapper.convertValue(sceneData, GameScene.class);
+                    System.out.println("Scene loaded: " + scene.getSceneId() + " with " + scene.getChoices().size() + " choices");
+
                     scenesCache.put(scene.getSceneId(), scene);
                 }
             }

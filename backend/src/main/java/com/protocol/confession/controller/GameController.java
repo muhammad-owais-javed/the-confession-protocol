@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import com.protocol.confession.dto.GameState;
 import com.protocol.confession.dto.PlayerChoice;
-import com.protocol.confession.services.GameService;
+import com.protocol.confession.service.GameService;
 
 import java.util.List;
 
@@ -26,20 +26,14 @@ public class GameController {
         return gameService.initializeGame();
 
     }
-
-    @PostMapping("/choice")
-    public GameState makeChoice(@RequestBody GameState gameState) {
-
-        String chosenText = gameState.getAvailableChoices().get(0);
-        return gameService.processPlayerChoice(chosenText, gameState.getConversationHistory());
-
-    }
-
-    @GetMapping("/end")
-    public GameState endGame() {
-
-        return new GameState(null, null, null, null);
-    }
+    
+@PostMapping("/choice")
+public GameState makeChoice(@RequestBody GameState gameState) {
+    String chosenText = gameState.getChosenText();
+    
+    return gameService.processPlayerChoice(chosenText, gameState.getConversationHistory(), 
+                                          gameState.getPsychologicalStats(), gameState.getCurrentSceneId());
+}
 }
 
 
