@@ -1,8 +1,8 @@
 // src/components/GameScreen/GameScreen.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import './GameScreen.css';
-import { getPortrait } from '../../utils/portraitHelper';
 import { playSound } from '../../utils/soundHelper';
+import { playPhaseMusic, playSoundEffect } from '../../utils/audioManager';
 
 const GameScreen = ({ gameState, onChoice, onRestart }) => {
   const [displayedNarrative, setDisplayedNarrative] = useState('');
@@ -10,13 +10,19 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
   const [choicesVisible, setChoicesVisible] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [phaseTransition, setPhaseTransition] = useState(false);
   const [selectedChoiceIndex, setSelectedChoiceIndex] = useState(null);
 
   const narrativeRef = useRef(null);
   const dialogueRef = useRef(null);
   const typewriterTimerRef = useRef(null);
   const dialogueTimerRef = useRef(null);
+
+  // Initialize phase music on mount and when phase changes
+  useEffect(() => {
+    if (gameState?.backgroundMusic) {
+      playPhaseMusic(gameState.backgroundMusic, gameState.musicVolume || 0.4, 2000);
+    }
+  }, [gameState?.backgroundMusic, gameState?.currentPhase]);
 
   // Typewriter effect for narrative
   useEffect(() => {
@@ -35,10 +41,9 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         index++;
       } else {
         clearInterval(typewriterTimerRef.current);
-        // Start dialogue typewriter after narrative completes
         startDialogueTypewriter();
       }
-    }, 25); // Adjust speed here (25ms per character)
+    }, 25);
 
     return () => clearInterval(typewriterTimerRef.current);
   }, [gameState?.narrativeText, gameState?.sceneId]);
@@ -53,6 +58,20 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
     let index = 0;
     const text = gameState.subjectDialogue;
     setDisplayedDialogue('');
+
+    // Play dialogue sound if specified
+    if (gameState.dialogueSound && soundEnabled) {
+      playSoundEffect(gameState.dialogueSound, 0.5);
+    }
+
+    // Play narrative sound if specified
+    if (gameState.narrativeSounds?.soundEffect && soundEnabled) {
+      playSoundEffect(
+        gameState.narrativeSounds.soundEffect,
+        gameState.narrativeSounds.volume || 0.6,
+        gameState.narrativeSounds.delay || 0
+      );
+    }
 
     dialogueTimerRef.current = setInterval(() => {
       if (index < text.length) {
@@ -73,14 +92,13 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
     soundEnabled && playSound('choice-select');
     setIsTransitioning(true);
 
-    // Brief delay for visual feedback
     setTimeout(() => {
       onChoice(choiceText);
       setIsTransitioning(false);
     }, 300);
   };
 
-  // Skip typewriter (click to reveal all text)
+  // Skip typewriter
   const skipTypewriter = () => {
     if (displayedNarrative !== gameState.narrativeText) {
       setDisplayedNarrative(gameState.narrativeText);
@@ -93,20 +111,33 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
     }
   };
 
-  const auditorPortrait = getPortrait('auditor', gameState.psychologicalStats);
-  const subjectPortrait = getPortrait('subject', gameState.psychologicalStats);
+  // Get background image
+  const backgroundImage = gameState?.backgroundImage || 'default-interrogation-room.jpg';
+  const auditorImage = gameState?.characterImages?.auditor || 'auditor_neutral.png';
+  const subjectImage = gameState?.characterImages?.subject || 'subject_calm.png';
 
   return (
-    <div className="game-screen">
+    <div
+      className="game-screen"
+      style={{
+        backgroundImage: `url(/images/${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Background Overlay */}
+      <div className="game-background-overlay" />
+
       {/* Header */}
       <header className="game-header">
         <div className="header-left">
           <div className="room-label">ROOM 07</div>
-          <div className="phase-name">{gameState.currentPhase}</div>
+          <div className="phase-name">{gameState?.currentPhase}</div>
         </div>
 
         <div className="header-center">
-          <div className="scene-name">{gameState.sceneName}</div>
+          <div className="scene-name">{gameState?.sceneName}</div>
         </div>
 
         <div className="header-right">
@@ -120,150 +151,146 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         </div>
       </header>
 
-      {/* Main Game Content */}
-      <div className="game-main">
-        {/* Left Panel - Character Portraits */}
-        <div className="character-panel left-panel">
-          <div className="portrait-container subject-portrait">
-            <img
-              src={`/portraits/${subjectPortrait}`}
-              alt="The Subject"
-              onError={(e) => {
-                e.target.src =
-                  'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23374151%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239CA3AF%22 font-size=%2214%22%3ETHE SUBJECT%3C/text%3E%3C/svg%3E';
-              }}
-            />
-          </div>
-          <div className="character-label">THE SUBJECT</div>
+      {/* Character Silhouettes */}
+      <div className="characters-layer">
+        {/* Auditor - Left */}
+        <div className="character-position auditor-position">
+          <img
+            src={`/silhouettes/${auditorImage}`}
+            alt="Auditor"
+            className="character-silhouette auditor"
+            onError={(e) => {
+              e.target.src =
+                'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22300%22%3E%3Crect fill=%22%23333%22 width=%22150%22 height=%22300%22 opacity=%220.3%22/%3E%3C/svg%3E';
+            }}
+          />
         </div>
 
-        {/* Center Panel - Dialogue & Choices */}
-        <div className="interaction-panel">
-          {/* Narrative Box */}
-          <div className="narrative-box" onClick={skipTypewriter}>
-            <div className="narrative-content" ref={narrativeRef}>
-              {displayedNarrative}
-              {displayedNarrative !== gameState.narrativeText && (
-                <span className="typewriter-cursor">█</span>
-              )}
-            </div>
-            <div className="click-hint">
-              {displayedNarrative !== gameState.narrativeText && '(Click to skip)'}
-            </div>
-          </div>
-
-          {/* Subject's Dialogue */}
-          <div className="dialogue-box subject-dialogue">
-            <div className="dialogue-label">SUBJECT'S STATEMENT</div>
-            <div className="dialogue-content" ref={dialogueRef}>
-              <span className="quote-mark">"</span>
-              {displayedDialogue}
-              {displayedDialogue !== gameState.subjectDialogue && (
-                <span className="typewriter-cursor">█</span>
-              )}
-              <span className="quote-mark">"</span>
-            </div>
-          </div>
-
-          {/* Stats Display */}
-          <div className="stats-display">
-            <div className="stat-bar">
-              <div className="stat-label">DENIAL</div>
-              <div className="stat-value">{gameState.psychologicalStats.denial}</div>
-              <div className="progress-bar">
-                <div
-                  className="progress-fill denial"
-                  style={{
-                    width: `${gameState.psychologicalStats.denial}%`
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="stat-bar">
-              <div className="stat-label">GUILT</div>
-              <div className="stat-value">{gameState.psychologicalStats.guilt}</div>
-              <div className="progress-bar">
-                <div
-                  className="progress-fill guilt"
-                  style={{
-                    width: `${gameState.psychologicalStats.guilt}%`
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="stat-bar">
-              <div className="stat-label">CONFUSION</div>
-              <div className="stat-value">{gameState.psychologicalStats.confusion}</div>
-              <div className="progress-bar">
-                <div
-                  className="progress-fill confusion"
-                  style={{
-                    width: `${gameState.psychologicalStats.confusion}%`
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="stat-bar">
-              <div className="stat-label">ENLIGHTENMENT</div>
-              <div className="stat-value">{gameState.psychologicalStats.enlightenment}</div>
-              <div className="progress-bar">
-                <div
-                  className="progress-fill enlightenment"
-                  style={{
-                    width: `${gameState.psychologicalStats.enlightenment}%`
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Choices */}
-          <div className="choices-container">
-            {choicesVisible && gameState.availableChoices && gameState.availableChoices.length > 0 ? (
-              <div className="choices-list">
-                {gameState.availableChoices.map((choice, index) => (
-                  <button
-                    key={index}
-                    className={`choice-button ${selectedChoiceIndex === index ? 'selected' : ''}`}
-                    onClick={() => handleChoiceClick(choice, index)}
-                    disabled={isTransitioning}
-                  >
-                    <span className="choice-arrow">→</span>
-                    <span className="choice-text">{choice}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              !isTransitioning && (
-                <button className="choice-button restart-button" onClick={onRestart}>
-                  <span className="choice-arrow">↺</span>
-                  <span className="choice-text">Return to Menu</span>
-                </button>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* Right Panel - Character Portrait */}
-        <div className="character-panel right-panel">
-          <div className="portrait-container auditor-portrait">
-            <img
-              src={`/portraits/${auditorPortrait}`}
-              alt="Auditor 07"
-              onError={(e) => {
-                e.target.src =
-                  'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23374151%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239CA3AF%22 font-size=%2214%22%3EAUDITOR 07%3C/text%3E%3C/svg%3E';
-              }}
-            />
-          </div>
-          <div className="character-label">AUDITOR 07</div>
+        {/* Subject - Right */}
+        <div className="character-position subject-position">
+          <img
+            src={`/silhouettes/${subjectImage}`}
+            alt="Subject"
+            className="character-silhouette subject"
+            onError={(e) => {
+              e.target.src =
+                'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22300%22%3E%3Crect fill=%22%23333%22 width=%22150%22 height=%22300%22 opacity=%220.3%22/%3E%3C/svg%3E';
+            }}
+          />
         </div>
       </div>
 
-      {/* Loading/Transitioning Overlay */}
+      {/* Main Game Content */}
+      <div className="game-main">
+        {/* Narrative Box */}
+        <div className="narrative-box" onClick={skipTypewriter}>
+          <div className="narrative-content" ref={narrativeRef}>
+            {displayedNarrative}
+            {displayedNarrative !== gameState?.narrativeText && (
+              <span className="typewriter-cursor">█</span>
+            )}
+          </div>
+          <div className="click-hint">
+            {displayedNarrative !== gameState?.narrativeText && '(Click to skip)'}
+          </div>
+        </div>
+
+        {/* Subject's Dialogue */}
+        <div className="dialogue-box subject-dialogue">
+          <div className="dialogue-label">SUBJECT</div>
+          <div className="dialogue-content" ref={dialogueRef}>
+            <span className="quote-mark">"</span>
+            {displayedDialogue}
+            {displayedDialogue !== gameState?.subjectDialogue && (
+              <span className="typewriter-cursor">█</span>
+            )}
+            <span className="quote-mark">"</span>
+          </div>
+        </div>
+
+        {/* Stats Display */}
+        <div className="stats-display">
+          <div className="stat-bar">
+            <div className="stat-label">DENIAL</div>
+            <div className="stat-value">{gameState?.psychologicalStats?.denial || 0}</div>
+            <div className="progress-bar">
+              <div
+                className="progress-fill denial"
+                style={{
+                  width: `${gameState?.psychologicalStats?.denial || 0}%`
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="stat-bar">
+            <div className="stat-label">GUILT</div>
+            <div className="stat-value">{gameState?.psychologicalStats?.guilt || 0}</div>
+            <div className="progress-bar">
+              <div
+                className="progress-fill guilt"
+                style={{
+                  width: `${gameState?.psychologicalStats?.guilt || 0}%`
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="stat-bar">
+            <div className="stat-label">CONFUSION</div>
+            <div className="stat-value">{gameState?.psychologicalStats?.confusion || 0}</div>
+            <div className="progress-bar">
+              <div
+                className="progress-fill confusion"
+                style={{
+                  width: `${gameState?.psychologicalStats?.confusion || 0}%`
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="stat-bar">
+            <div className="stat-label">ENLIGHTENMENT</div>
+            <div className="stat-value">{gameState?.psychologicalStats?.enlightenment || 0}</div>
+            <div className="progress-bar">
+              <div
+                className="progress-fill enlightenment"
+                style={{
+                  width: `${gameState?.psychologicalStats?.enlightenment || 0}%`
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Choices */}
+        <div className="choices-container">
+          {choicesVisible && gameState?.availableChoices && gameState.availableChoices.length > 0 ? (
+            <div className="choices-list">
+              {gameState.availableChoices.map((choice, index) => (
+                <button
+                  key={index}
+                  className={`choice-button ${selectedChoiceIndex === index ? 'selected' : ''}`}
+                  onClick={() => handleChoiceClick(choice, index)}
+                  disabled={isTransitioning}
+                >
+                  <span className="choice-arrow">→</span>
+                  <span className="choice-text">{choice}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            !isTransitioning && (
+              <button className="choice-button restart-button" onClick={onRestart}>
+                <span className="choice-arrow">↺</span>
+                <span className="choice-text">Return to Menu</span>
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Transition Overlay */}
       {isTransitioning && <div className="transition-overlay" />}
     </div>
   );
