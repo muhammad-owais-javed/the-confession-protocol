@@ -1,0 +1,11 @@
+{
+  "gameTitle": "The Confession Protocol",
+  "startSceneId": "phase_1_scene_intro",
+  "phases": [
+    "phase_1.json",
+    "phase_2.json",
+    "phase_3.json",
+    "phase_4.json",
+    "phase_5.json"
+  ]
+}

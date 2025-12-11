@@ -23,5 +23,5 @@ dist-ssr
 *.sw?
 
 #Directory
-backend/src/main/resources/game-story.json
-backend/target/classes/game-story.json
+backend/src/main/resources/*
+backend/target/classes/*
