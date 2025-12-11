@@ -18,6 +18,17 @@ public class GameController {
     @Autowired
     private GameService gameService;
 
+    @GetMapping("/menu")
+public String getMenu() {
+    return "<!DOCTYPE html><html><body>" +
+           "<h1>The Confession Protocol</h1>" +
+           "<p>A psychological thriller about truth, guilt, and cycles.</p>" +
+           "<button onclick=\"startGame()\">Start Game</button>" +
+           "<script>" +
+           "function startGame() { window.location.href = '/'; }" +
+           "</script>" +
+           "</body></html>";
+}
 
 
     @GetMapping("/start")
