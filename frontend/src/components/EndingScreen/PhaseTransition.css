@@ -1,0 +1,221 @@
+/* src/components/PhaseTransition/PhaseTransition.css */
+
+.phase-transition {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.phase-transition.visible {
+  animation: fadeInTransition 0.5s ease-in forwards;
+}
+
+.phase-transition.hidden {
+  animation: fadeOutTransition 0.5s ease-out forwards;
+}
+
+@keyframes fadeInTransition {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOutTransition {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Background */
+.phase-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+  animation: fadeIn 0.3s ease-in forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Content */
+.phase-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  animation: slideInContent 0.6s ease-out 0.2s both;
+}
+
+@keyframes slideInContent {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Text Container */
+.phase-text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Phase Heading */
+.phase-heading {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #ffffff;
+  text-shadow: 0 0 30px rgba(220, 38, 38, 0.6);
+  text-transform: uppercase;
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 40px rgba(220, 38, 38, 0.8),
+                  0 0 60px rgba(220, 38, 38, 0.6);
+  }
+}
+
+/* Lines */
+.phase-line {
+  width: 100px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #dc2626, transparent);
+  animation: expandLine 0.6s ease-out 0.1s both;
+}
+
+.phase-line-top {
+  animation-delay: 0.1s;
+}
+
+.phase-line-bottom {
+  animation-delay: 0.2s;
+}
+
+@keyframes expandLine {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 100px;
+    opacity: 1;
+  }
+}
+
+/* Subtitle with animated dots */
+.phase-subtitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 20px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #dc2626;
+  opacity: 0;
+  animation: dotBounce 1.4s infinite;
+}
+
+.dot-1 {
+  animation-delay: 0s;
+}
+
+.dot-2 {
+  animation-delay: 0.2s;
+}
+
+.dot-3 {
+  animation-delay: 0.4s;
+}
+
+@keyframes dotBounce {
+  0%, 60%, 100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-10px);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .phase-heading {
+    font-size: 1.8rem;
+  }
+
+  .phase-line {
+    width: 80px;
+  }
+
+  .phase-subtitle {
+    gap: 6px;
+  }
+
+  .dot {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .phase-heading {
+    font-size: 1.3rem;
+  }
+
+  .phase-line {
+    width: 60px;
+  }
+
+  .phase-subtitle {
+    gap: 4px;
+  }
+
+  .dot {
+    width: 4px;
+    height: 4px;
+  }
+}

@@ -27,7 +27,7 @@ export const getPortrait = (character, stats) => {
     }
     
     // High confusion (disorientation, reality breaking)
-    if (confusion > 70) {
+    if (confusion > 20) {
       return 'auditor_confused.png';
     }
     
