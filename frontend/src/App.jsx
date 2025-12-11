@@ -3,17 +3,18 @@ import React, { useState } from 'react';
 import HomePage from './components/HomePage/HomePage';
 import GameScreen from './components/GameScreen/GameScreen';
 import EndingScreen from './components/EndingScreen/EndingScreen';
-import PhaseTransition from './components/PhaseTransition/PhaseTransition';
+import PhaseIntroScreen from './components/PhaseIntroScreen/PhaseIntroScreen';
+import { handoffFromHomepage, stopPhaseMusic } from './utils/audioManager';
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState('home'); // home, game, ending
+  const [currentScreen, setCurrentScreen] = useState('home'); // home, game, phase-intro, ending
   const [gameState, setGameState] = useState(null);
   const [previousPhase, setPreviousPhase] = useState(null);
-  const [showPhaseTransition, setShowPhaseTransition] = useState(false);
 
   // Handle game start
   const handleStartGame = async () => {
     try {
+      handoffFromHomepage();
       const response = await fetch('http://localhost:8080/start');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -46,18 +47,22 @@ function App() {
 
       const newGameState = await response.json();
 
-      // Check if phase changed (trigger phase transition)
+      // Check if phase changed
       if (newGameState.currentPhase !== gameState.currentPhase) {
         setPreviousPhase(gameState.currentPhase);
-        setShowPhaseTransition(true);
-        
-        // After transition completes, update state
-        setTimeout(() => {
+        // Show phase intro if phase has intro images
+        if (newGameState.introImages && newGameState.introImages.length > 0) {
+          setCurrentScreen('phase-intro');
+          // Set timeout to show intro then switch to game
+          setTimeout(() => {
+            setGameState(newGameState);
+            setCurrentScreen('game');
+          }, 7500); // Duration of intro screen
+        } else {
           setGameState(newGameState);
-          setShowPhaseTransition(false);
-        }, 2500);
+        }
       } else if (newGameState.isEnding) {
-        // Reached ending - go to ending screen
+        // Reached ending
         setGameState(newGameState);
         setCurrentScreen('ending');
       } else {
@@ -70,37 +75,40 @@ function App() {
     }
   };
 
-  // Handle phase transition completion
-  const handlePhaseTransitionComplete = () => {
-    setShowPhaseTransition(false);
+  // Handle phase intro completion
+  const handlePhaseIntroComplete = () => {
+    if (gameState) {
+      setCurrentScreen('game');
+    }
   };
 
-  // Handle restart - back to home
+  // Handle restart
   const handleRestart = () => {
+    stopPhaseMusic();
     setGameState(null);
     setPreviousPhase(null);
-    setShowPhaseTransition(false);
     setCurrentScreen('home');
   };
 
   return (
     <div className="app">
-      {/* Phase Transition Overlay */}
-      {showPhaseTransition && gameState && (
-        <PhaseTransition
-          phaseName={gameState.currentPhase}
-          onComplete={handlePhaseTransitionComplete}
-          duration={2500}
-        />
-      )}
-
       {/* Home Screen */}
       {currentScreen === 'home' && (
         <HomePage onStartGame={handleStartGame} />
       )}
 
+      {/* Phase Intro Screen */}
+      {currentScreen === 'phase-intro' && gameState && (
+        <PhaseIntroScreen
+          phaseName={gameState.currentPhase}
+          introImages={gameState.introImages || []}
+          onComplete={handlePhaseIntroComplete}
+          duration={2500}
+        />
+      )}
+
       {/* Game Screen */}
-      {currentScreen === 'game' && gameState && !showPhaseTransition && (
+      {currentScreen === 'game' && gameState && (
         <GameScreen
           gameState={gameState}
           onChoice={handleGameChoice}
