@@ -32,39 +32,51 @@ public class StoryLoader {
      * - endings_scenes.json (ending scene narratives)
      */
     public void loadStory() {
-        if (isLoaded) {
-            return;
-        }
+    if (isLoaded) {
+        return;
+    }
 
-        try {
-            // Load story index
-            InputStream indexStream = resourceLoader
-                .getResource("classpath:stories/story-index.json")
-                .getInputStream();
+    try {
+        System.out.println("DEBUG: Starting to load story...");
+        
+        // Load story index
+        System.out.println("DEBUG: Loading story-index.json...");
+        InputStream indexStream = resourceLoader
+            .getResource("classpath:stories/story-index.json")
+            .getInputStream();
 
-            Map<String, Object> indexData = mapper.readValue(indexStream, Map.class);
-            this.startSceneId = (String) indexData.get("startSceneId");
+        Map<String, Object> indexData = mapper.readValue(indexStream, Map.class);
+        this.startSceneId = (String) indexData.get("startSceneId");
+        System.out.println("DEBUG: startSceneId = " + this.startSceneId);
 
-            // Load each phase file
-            List<String> phaseFiles = (List<String>) indexData.get("phases");
+        // Load each phase file
+        List<String> phaseFiles = (List<String>) indexData.get("phases");
+        System.out.println("DEBUG: Found " + (phaseFiles != null ? phaseFiles.size() : 0) + " phase files");
+        
+        if (phaseFiles != null) {
             for (String phaseFile : phaseFiles) {
+                System.out.println("DEBUG: Loading phase file: " + phaseFile);
                 loadPhaseFile(phaseFile);
             }
-
-            // Load ending conditions
-            loadEndingsFile();
-
-            // Load ending scenes
-            loadEndingScenesFile();
-
-            isLoaded = true;
-            System.out.println("✓ Story loaded successfully. Total scenes: " + scenesCache.size());
-
-        } catch (Exception e) {
-            System.err.println("✗ Error loading story: " + e.getMessage());
-            e.printStackTrace();
         }
+
+        // Load ending conditions
+        System.out.println("DEBUG: Loading endings.json...");
+        loadEndingsFile();
+
+        // Load ending scenes
+        System.out.println("DEBUG: Loading endings_scenes.json...");
+       // loadEndingScenesFile();
+
+        isLoaded = true;
+        System.out.println("✓ Story loaded successfully. Total scenes: " + scenesCache.size());
+        System.out.println("DEBUG: All scene IDs: " + scenesCache.keySet());
+
+    } catch (Exception e) {
+        System.err.println("✗ Error loading story: " + e.getMessage());
+        e.printStackTrace();
     }
+}
 
     /**
      * Load a single phase file and cache all its scenes
@@ -106,7 +118,7 @@ public class StoryLoader {
 
     /**
      * Load ending scenes from endings_scenes.json and cache them
-     */
+     *
     private void loadEndingScenesFile() throws Exception {
         InputStream endingScenesStream = resourceLoader
             .getResource("classpath:stories/endings_scenes.json")
@@ -127,7 +139,7 @@ public class StoryLoader {
                          (endingScenes != null ? endingScenes.size() : 0) + 
                          " ending(s)");
     }
-
+**/
     /**
      * Retrieve a scene by its ID
      * Works for both regular scenes and ending scenes

@@ -1,6 +1,7 @@
 package com.protocol.confession.dto;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a single scene in the game
@@ -13,6 +14,8 @@ public class GameScene {
     private String narrative;
     private String subjectDialogue;
     private List<GameChoice> choices;
+
+    private List<Map<String, Object>> characters;
 
     private String currentSceneId;
 
@@ -75,4 +78,13 @@ public class GameScene {
     public void setCurrentSceneId(String currentSceneId) {
     this.currentSceneId = currentSceneId;
     }
+
+    public List<Map<String, Object>> getCharacters() {
+    return characters;
+    }
+
+    public void setCharacters(List<Map<String, Object>> characters) {
+        this.characters = characters;
+    }
+
 }
