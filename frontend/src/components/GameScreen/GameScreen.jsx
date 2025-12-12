@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './GameScreen.css';
 import { playSound } from '../../utils/soundHelper';
-import { playPhaseMusic, playSoundEffect } from '../../utils/audioManager';
+import { playPhaseMusic, playSoundEffect, isAudioEnabledGlobal } from '../../utils/audioManager';
 
 const GameScreen = ({ gameState, onChoice, onRestart }) => {
   const [displayedNarrative, setDisplayedNarrative] = useState('');
@@ -19,10 +19,15 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
 
   // Initialize phase music on mount and when phase changes
   useEffect(() => {
-    if (gameState?.backgroundMusic) {
-      playPhaseMusic(gameState.backgroundMusic, gameState.musicVolume || 0.4, 2000);
+
+
+      
+  if (gameState?.backgroundImage) {
+    console.log("Background image:", gameState.backgroundImage);
+    console.log("Character images:", gameState.characterImages);
     }
-  }, [gameState?.backgroundMusic, gameState?.currentPhase]);
+  }, [gameState?.backgroundImage]);
+
 
   // Typewriter effect for narrative
   useEffect(() => {
@@ -120,7 +125,7 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
     <div
       className="game-screen"
       style={{
-        backgroundImage: `url(/images/${backgroundImage})`,
+        backgroundImage: backgroundImage ? `url(/images/${backgroundImage})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed'

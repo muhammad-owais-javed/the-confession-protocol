@@ -2,6 +2,11 @@ package com.protocol.confession.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.protocol.confession.dto.GameScene;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
@@ -17,6 +22,9 @@ public class StoryLoader {
     @Autowired
     private ResourceLoader resourceLoader;
 
+    @Autowired
+    private Gson gson;
+
     private ObjectMapper mapper = new ObjectMapper();
 
     private Map<String, GameScene> scenesCache = new HashMap<>();
@@ -29,54 +37,49 @@ public class StoryLoader {
      * - story-index.json (phases list)
      * - phase_X.json files (scenes)
      * - endings.json (ending conditions)
-     * - endings_scenes.json (ending scene narratives)
      */
     public void loadStory() {
-    if (isLoaded) {
-        return;
-    }
-
-    try {
-        System.out.println("DEBUG: Starting to load story...");
-        
-        // Load story index
-        System.out.println("DEBUG: Loading story-index.json...");
-        InputStream indexStream = resourceLoader
-            .getResource("classpath:stories/story-index.json")
-            .getInputStream();
-
-        Map<String, Object> indexData = mapper.readValue(indexStream, Map.class);
-        this.startSceneId = (String) indexData.get("startSceneId");
-        System.out.println("DEBUG: startSceneId = " + this.startSceneId);
-
-        // Load each phase file
-        List<String> phaseFiles = (List<String>) indexData.get("phases");
-        System.out.println("DEBUG: Found " + (phaseFiles != null ? phaseFiles.size() : 0) + " phase files");
-        
-        if (phaseFiles != null) {
-            for (String phaseFile : phaseFiles) {
-                System.out.println("DEBUG: Loading phase file: " + phaseFile);
-                loadPhaseFile(phaseFile);
-            }
+        if (isLoaded) {
+            return;
         }
 
-        // Load ending conditions
-        System.out.println("DEBUG: Loading endings.json...");
-        loadEndingsFile();
+        try {
+            System.out.println("DEBUG: Starting to load story...");
+            
+            // Load story index
+            System.out.println("DEBUG: Loading story-index.json...");
+            InputStream indexStream = resourceLoader
+                .getResource("classpath:stories/story-index.json")
+                .getInputStream();
 
-        // Load ending scenes
-        System.out.println("DEBUG: Loading endings_scenes.json...");
-       // loadEndingScenesFile();
+            Map<String, Object> indexData = mapper.readValue(indexStream, Map.class);
+            this.startSceneId = (String) indexData.get("startSceneId");
+            System.out.println("DEBUG: startSceneId = " + this.startSceneId);
 
-        isLoaded = true;
-        System.out.println("✓ Story loaded successfully. Total scenes: " + scenesCache.size());
-        System.out.println("DEBUG: All scene IDs: " + scenesCache.keySet());
+            // Load each phase file
+            List<String> phaseFiles = (List<String>) indexData.get("phases");
+            System.out.println("DEBUG: Found " + (phaseFiles != null ? phaseFiles.size() : 0) + " phase files");
+            
+            if (phaseFiles != null) {
+                for (String phaseFile : phaseFiles) {
+                    System.out.println("DEBUG: Loading phase file: " + phaseFile);
+                    loadPhaseFile(phaseFile);
+                }
+            }
 
-    } catch (Exception e) {
-        System.err.println("✗ Error loading story: " + e.getMessage());
-        e.printStackTrace();
+            // Load ending conditions
+            System.out.println("DEBUG: Loading endings.json...");
+            loadEndingsFile();
+
+            isLoaded = true;
+            System.out.println("✓ Story loaded successfully. Total scenes: " + scenesCache.size());
+            System.out.println("DEBUG: All scene IDs: " + scenesCache.keySet());
+
+        } catch (Exception e) {
+            System.err.println("✗ Error loading story: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
-}
 
     /**
      * Load a single phase file and cache all its scenes
@@ -86,16 +89,92 @@ public class StoryLoader {
             .getResource("classpath:stories/phases/" + phaseFileName)
             .getInputStream();
 
-        Map<String, Object> phaseData = mapper.readValue(inputStream, Map.class);
-        List<Map<String, Object>> scenes = (List<Map<String, Object>>) phaseData.get("scenes");
+        // Use Gson to parse and extract all fields including visual ones
+        JsonElement element = JsonParser.parseReader(
+            new java.io.InputStreamReader(inputStream));
+        JsonObject phaseData = element.getAsJsonObject();
+        
+        // Extract phase-level visual fields
+        String backgroundMusic = null;
+        Double musicVolume = null;
+        List<String> introImages = null;
+        
+        if (phaseData.has("backgroundMusic")) {
+            backgroundMusic = phaseData.get("backgroundMusic").getAsString();
+        }
+        if (phaseData.has("musicVolume")) {
+            musicVolume = phaseData.get("musicVolume").getAsDouble();
+        }
+        if (phaseData.has("introImages")) {
+            JsonArray introArray = phaseData.getAsJsonArray("introImages");
+            introImages = new java.util.ArrayList<>();
+            for (JsonElement img : introArray) {
+                introImages.add(img.getAsString());
+            }
+        }
 
-        if (scenes != null) {
-            for (Map<String, Object> sceneData : scenes) {
-                GameScene scene = mapper.convertValue(sceneData, GameScene.class);
-                scenesCache.put(scene.getSceneId(), scene);
-                System.out.println("  Scene loaded: " + scene.getSceneId() + " (" + 
-                                 (scene.getChoices() != null ? scene.getChoices().size() : 0) + 
-                                 " choices)");
+        // Load scenes
+        JsonArray scenesArray = phaseData.getAsJsonArray("scenes");
+        if (scenesArray != null) {
+            for (JsonElement sceneElement : scenesArray) {
+                JsonObject sceneJson = sceneElement.getAsJsonObject();
+                GameScene scene = gson.fromJson(sceneJson, GameScene.class);
+                
+                // Extract visual fields from scene JSON
+                if (sceneJson.has("backgroundImage")) {
+                    scene.setBackgroundImage(sceneJson.get("backgroundImage").getAsString());
+                }
+                
+                // Extract character images
+                if (sceneJson.has("characterImages")) {
+                    JsonObject charImages = sceneJson.getAsJsonObject("characterImages");
+                    Map<String, String> charMap = new HashMap<>();
+                    if (charImages.has("auditor")) {
+                        charMap.put("auditor", charImages.get("auditor").getAsString());
+                    }
+                    if (charImages.has("subject")) {
+                        charMap.put("subject", charImages.get("subject").getAsString());
+                    }
+                    scene.setCharacterImages(charMap);
+                }
+                
+                // Extract intro images (scene level)
+                if (sceneJson.has("introImages")) {
+                    JsonArray introArray = sceneJson.getAsJsonArray("introImages");
+                    List<String> sceneIntros = new java.util.ArrayList<>();
+                    for (JsonElement img : introArray) {
+                        sceneIntros.add(img.getAsString());
+                    }
+                    scene.setIntroImages(sceneIntros);
+                }
+                
+                // Extract music (scene level)
+                if (sceneJson.has("backgroundMusic")) {
+                    scene.setBackgroundMusic(sceneJson.get("backgroundMusic").getAsString());
+                }
+                if (sceneJson.has("musicVolume")) {
+                    scene.setMusicVolume(sceneJson.get("musicVolume").getAsDouble());
+                }
+                
+                // Extract sound effects
+                if (sceneJson.has("dialogueSound")) {
+                    scene.setDialogueSound(sceneJson.get("dialogueSound").getAsString());
+                }
+                if (sceneJson.has("narrativeSounds")) {
+                    JsonObject sounds = sceneJson.getAsJsonObject("narrativeSounds");
+                    Map<String, Object> soundMap = gson.fromJson(sounds, Map.class);
+                    scene.setNarrativeSounds(soundMap);
+                }
+                
+scenesCache.put(scene.getSceneId(), scene);
+System.out.println("  Scene loaded: " + scene.getSceneId() + " (" + 
+                 (scene.getChoices() != null ? scene.getChoices().size() : 0) + 
+                 " choices)");
+// DEBUG: Print visual fields
+System.out.println("    - backgroundImage: " + scene.getBackgroundImage());
+System.out.println("    - characterImages: " + scene.getCharacterImages());
+System.out.println("    - introImages: " + scene.getIntroImages());
+System.out.println("    - backgroundMusic: " + scene.getBackgroundMusic());
             }
         }
     }
@@ -117,32 +196,7 @@ public class StoryLoader {
     }
 
     /**
-     * Load ending scenes from endings_scenes.json and cache them
-     *
-    private void loadEndingScenesFile() throws Exception {
-        InputStream endingScenesStream = resourceLoader
-            .getResource("classpath:stories/endings_scenes.json")
-            .getInputStream();
-
-        Map<String, Object> endingScenesData = mapper.readValue(endingScenesStream, Map.class);
-        List<Map<String, Object>> endingScenes = (List<Map<String, Object>>) endingScenesData.get("endingScenes");
-
-        if (endingScenes != null) {
-            for (Map<String, Object> sceneData : endingScenes) {
-                GameScene scene = mapper.convertValue(sceneData, GameScene.class);
-                scenesCache.put(scene.getSceneId(), scene);
-                System.out.println("  Ending scene loaded: " + scene.getSceneId());
-            }
-        }
-
-        System.out.println("✓ Ending scenes loaded: " + 
-                         (endingScenes != null ? endingScenes.size() : 0) + 
-                         " ending(s)");
-    }
-**/
-    /**
      * Retrieve a scene by its ID
-     * Works for both regular scenes and ending scenes
      */
     public GameScene getScene(String sceneId) {
         if (!isLoaded) {

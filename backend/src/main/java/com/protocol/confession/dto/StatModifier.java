@@ -50,6 +50,11 @@ public class StatModifier {
     public void setEnlightenment(Integer enlightenment) {
         this.enlightenment = enlightenment;
     }
+
+    public void forEach(Object object) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'forEach'");
+    }
     
     
 }

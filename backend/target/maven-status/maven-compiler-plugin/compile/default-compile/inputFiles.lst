@@ -1,0 +1,12 @@
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/ConfessionApplication.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/config/CorsConfig.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/controller/GameController.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/dto/ConditionalResponse.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/dto/ConversationHistory.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/dto/GameChoice.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/dto/GameScene.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/dto/GameState.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/dto/PlayerChoice.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/dto/StatModifier.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/service/GameService.java
+/home/owais/MyProjects/the-confession-protocol/backend/src/main/java/com/protocol/confession/service/StoryLoader.java

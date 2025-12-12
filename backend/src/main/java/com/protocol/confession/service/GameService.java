@@ -1,17 +1,18 @@
 package com.protocol.confession.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.protocol.confession.dto.GameChoice;
+import com.protocol.confession.dto.GameScene;
+import com.protocol.confession.dto.GameState;
+import com.protocol.confession.dto.StatModifier;
+import com.protocol.confession.dto.ConversationHistory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import com.protocol.confession.dto.ConversationHistory;
-import com.protocol.confession.dto.GameChoice;
-import com.protocol.confession.dto.GameScene;
-import com.protocol.confession.dto.GameState;
 
 @Service
 public class GameService {
@@ -20,227 +21,193 @@ public class GameService {
     private StoryLoader storyLoader;
 
     /**
-     * Initializes the game - loads starting scene from JSON
-     * @return Initial GameState
+     * Initialize the game - return the first scene
      */
     public GameState initializeGame() {
-    String startSceneId = storyLoader.getStartSceneId();
-    GameScene scene = storyLoader.getScene(startSceneId);
-    
-    if (scene == null) {
-        return createErrorState("Failed to load starting scene");
-    }
-
-    Map<String, Integer> initialStats = createInitialStats();
-
-    return new GameState(
-        scene.getSceneName(),
-        scene.getNarrative(),
-        scene.getSubjectDialogue(),
-        convertChoicesToText(scene.getChoices()),
-        new ArrayList<>(),
-        initialStats,
-        startSceneId  // ADD THIS
-        );
-    }
-    /**
-     * Processes player's choice and returns next game state
-     * @param chosenText The text of the choice player selected
-     * @param currentHistory The conversation history so far
-     * @param currentStats The current psychological stats
-     * @return Updated GameState with next scene and updated stats
-     */
-    public GameState processPlayerChoice(String chosenText, List<ConversationHistory> currentHistory, 
-                                    Map<String, Integer> currentStats, String currentSceneId) {
-    
-    // Get current scene from JSON
-    GameScene currentScene = storyLoader.getScene(currentSceneId);
-    if (currentScene == null) {
-        return createErrorState("Current scene not found");
-    }
-
-
-    if (chosenText != null && chosenText.contains("[Restart Game]")) {
-        // Reset stats when restarting
-        Map<String, Integer> resetStats = createInitialStats();
-        return initializeGame();
-    }
-
-    // Find the choice that matches chosenText
-    GameChoice selectedChoice = null;
-    for (GameChoice choice : currentScene.getChoices()) {
-        if (choice.getChoiceText().equals(chosenText)) {
-            selectedChoice = choice;
-            break;
-        }
-    }
-
-    if (selectedChoice == null) {
-        return createErrorState("Choice not found");
-    }
-
-    // Get next scene using nextSceneId from the choice
-    String nextSceneId = selectedChoice.getNextSceneId();
-    GameScene nextScene = storyLoader.getScene(nextSceneId);
-
-    if (nextScene == null) {
-        return createErrorState("Next scene not found: " + nextSceneId);
-    }
-
-    // Update stats based on statModifiers from the choice
-    Map<String, Integer> updatedStats = new HashMap<>(currentStats);
-    if (selectedChoice.getStatModifiers() != null) {
-        updatedStats.put("denial", updatedStats.get("denial") + selectedChoice.getStatModifiers().getDenial());
-        updatedStats.put("guilt", updatedStats.get("guilt") + selectedChoice.getStatModifiers().getGuilt());
-        updatedStats.put("confusion", updatedStats.get("confusion") + selectedChoice.getStatModifiers().getConfusion());
-        updatedStats.put("enlightenment", updatedStats.get("enlightenment") + selectedChoice.getStatModifiers().getEnlightenment());
+        String startSceneId = storyLoader.getStartSceneId();
+        GameScene startScene = storyLoader.getScene(startSceneId);
         
-        // Clamp stats 0-100
-        for (String statName : updatedStats.keySet()) {
-            int value = updatedStats.get(statName);
-            updatedStats.put(statName, Math.max(0, Math.min(100, value)));
+        if (startScene == null) {
+            throw new RuntimeException("Start scene not found: " + startSceneId);
         }
-    }
 
-    // Create conversation history entry
-    ConversationHistory newTurn = new ConversationHistory(
-        chosenText,
-        nextScene.getSubjectDialogue(),
-        nextScene.getNarrative()
-    );
+        GameState gameState = new GameState();
+        gameState.setCurrentSceneId(startSceneId);
+        gameState.setPsychologicalStats(new HashMap<>());
+        gameState.setConversationHistory(new ArrayList<>());
+        gameState.setAvailableChoices(new ArrayList<>());
 
-    List<ConversationHistory> updatedHistory = new ArrayList<>(currentHistory);
-    updatedHistory.add(newTurn);
+        // Map scene data to game state
+        mapSceneToGameState(startScene, gameState, null);
 
-    return new GameState(
-        nextScene.getSceneName(),  // Use scene name instead of hardcoded phase
-    nextScene.getNarrative(),
-    nextScene.getSubjectDialogue(),
-    convertChoicesToText(nextScene.getChoices()),
-    updatedHistory,
-    updatedStats,
-        nextSceneId
-        );
+        return gameState;
     }
 
     /**
-     * Create initial psychological stats (all at 0)
+     * Process player choice and return next game state
      */
-    private Map<String, Integer> createInitialStats() {
-        Map<String, Integer> stats = new HashMap<>();
-        stats.put("denial", 0);
-        stats.put("guilt", 0);
-        stats.put("confusion", 0);
-        stats.put("enlightenment", 0);
-        return stats;
+    public GameState processPlayerChoice(String chosenText, List<ConversationHistory> conversationHistory,
+                                        Map<String, Integer> currentStats, String currentSceneId) {
+        
+        // Get current scene
+        GameScene currentScene = storyLoader.getScene(currentSceneId);
+        if (currentScene == null) {
+            throw new RuntimeException("Scene not found: " + currentSceneId);
+        }
+
+        // Find the matching choice
+        GameChoice selectedChoice = null;
+        if (currentScene.getChoices() != null) {
+            for (GameChoice choice : currentScene.getChoices()) {
+                if (choice.getChoiceText().equals(chosenText)) {
+                    selectedChoice = choice;
+                    break;
+                }
+            }
+        }
+
+        if (selectedChoice == null) {
+            throw new RuntimeException("Choice not found: " + chosenText);
+        }
+
+         // Apply stat modifiers
+        Map<String, Integer> updatedStats = new HashMap<>(currentStats);
+        StatModifier statModifiers = selectedChoice.getStatModifiers();
+        if (statModifiers != null) {
+            // Apply each stat modifier
+            if (statModifiers.getDenial() != null) {
+                int currentValue = updatedStats.getOrDefault("denial", 0);
+                updatedStats.put("denial", Math.max(0, Math.min(100, currentValue + statModifiers.getDenial())));
+            }
+            if (statModifiers.getGuilt() != null) {
+                int currentValue = updatedStats.getOrDefault("guilt", 0);
+                updatedStats.put("guilt", Math.max(0, Math.min(100, currentValue + statModifiers.getGuilt())));
+            }
+            if (statModifiers.getConfusion() != null) {
+                int currentValue = updatedStats.getOrDefault("confusion", 0);
+                updatedStats.put("confusion", Math.max(0, Math.min(100, currentValue + statModifiers.getConfusion())));
+            }
+            if (statModifiers.getEnlightenment() != null) {
+                int currentValue = updatedStats.getOrDefault("enlightenment", 0);
+                updatedStats.put("enlightenment", Math.max(0, Math.min(100, currentValue + statModifiers.getEnlightenment())));
+            }
+        }
+        
+
+        // Create conversation history entry
+        List<ConversationHistory> updatedHistory = new ArrayList<>(conversationHistory);
+        updatedHistory.add(new ConversationHistory(chosenText, "", ""));
+
+        // Get next scene
+        String nextSceneId = selectedChoice.getNextSceneId();
+        GameScene nextScene = storyLoader.getScene(nextSceneId);
+
+        if (nextScene == null) {
+            throw new RuntimeException("Next scene not found: " + nextSceneId);
+        }
+
+        // Create new game state
+        GameState gameState = new GameState();
+        gameState.setCurrentSceneId(nextSceneId);
+        gameState.setPsychologicalStats(updatedStats);
+        gameState.setConversationHistory(updatedHistory);
+
+        // Map scene data to game state
+        mapSceneToGameState(nextScene, gameState, updatedStats);
+
+        // Check if this is an ending
+        List<Map<String, Object>> endingConditions = storyLoader.getEndingConditions();
+        if (isEnding(nextSceneId, updatedStats, endingConditions)) {
+            gameState.setIsEnding(true);
+        }
+
+        return gameState;
     }
 
     /**
-     * Convert GameChoice list to simple text list for frontend
+     * Map GameScene data to GameState
+     * This includes all visual fields (background, characters, music, etc.)
      */
-    private List<String> convertChoicesToText(List<GameChoice> choices) {
+    private void mapSceneToGameState(GameScene scene, GameState gameState, Map<String, Integer> stats) {
+        // Original fields
+        gameState.setSceneName(scene.getSceneName());
+        gameState.setNarrativeText(scene.getNarrative());
+        gameState.setSubjectDialogue(scene.getSubjectDialogue());
+        
+        // Extract phase from scene ID (e.g., "phase_1_scene_intro" -> "PHASE 1 - THE INTERVIEW")
+        String phaseFromSceneId = extractPhaseFromSceneId(scene.getSceneId());
+        gameState.setCurrentPhase(phaseFromSceneId);
+
+        // Map available choices
         List<String> choiceTexts = new ArrayList<>();
-        if (choices != null) {
-            for (GameChoice choice : choices) {
+        if (scene.getChoices() != null) {
+            for (GameChoice choice : scene.getChoices()) {
                 choiceTexts.add(choice.getChoiceText());
             }
         }
-        return choiceTexts;
-    }
+        gameState.setAvailableChoices(choiceTexts);
 
-    /**
-     * Find the next scene based on player's choice
-     * (Simplified - in full game, track current scene in GameState)
-     */
-    private GameScene findNextScene(String chosenText, List<ConversationHistory> history) {
-        // This is a temporary placeholder
-        // In a full implementation, you'd:
-        // 1. Track current scene ID in GameState
-        // 2. Look up the choice that matches chosenText
-        // 3. Get nextSceneId from that choice
-        // 4. Load that scene
-        
-        // For now, return a generic next scene (hardcoded for testing)
-        return storyLoader.getScene("phase_1_scene_q1_response");
-    }
-
-    /**
-     * Apply stat modifiers based on the choice made
-     */
-    private void applyStatModifiers(Map<String, Integer> stats, String chosenText) {
-        // This would normally look up the choice in JSON and apply its statModifiers
-        // For now, simple example:
-        
-        if (chosenText.contains("understand why you're here")) {
-            stats.put("denial", stats.get("denial") + 5);
-            stats.put("guilt", stats.get("guilt") - 5);
-        } else if (chosenText.contains("your name")) {
-            stats.put("denial", stats.get("denial") + 10);
-            stats.put("enlightenment", stats.get("enlightenment") - 5);
+        // Map visual fields from scene
+        if (scene.getBackgroundImage() != null) {
+            gameState.setBackgroundImage(scene.getBackgroundImage());
         }
-        
-        // Clamp stats between 0-100
-        for (String statName : stats.keySet()) {
-            int value = stats.get(statName);
-            stats.put(statName, Math.max(0, Math.min(100, value)));
+
+        if (scene.getCharacterImages() != null) {
+            gameState.setCharacterImages(scene.getCharacterImages());
+        }
+
+        if (scene.getIntroImages() != null) {
+            gameState.setIntroImages(scene.getIntroImages());
+        }
+
+        if (scene.getBackgroundMusic() != null) {
+            gameState.setBackgroundMusic(scene.getBackgroundMusic());
+        }
+
+        if (scene.getMusicVolume() != null) {
+            gameState.setMusicVolume(scene.getMusicVolume());
+        }
+
+        if (scene.getDialogueSound() != null) {
+            gameState.setDialogueSound(scene.getDialogueSound());
+        }
+
+        if (scene.getNarrativeSounds() != null) {
+            gameState.setNarrativeSounds(scene.getNarrativeSounds());
         }
     }
 
     /**
-     * Get dialogue that might change based on current stats
+     * Extract phase name from scene ID
+     * Example: "phase_1_scene_intro" -> "PHASE 1 - THE INTERVIEW"
      */
-    private String getConditionalDialogue(String baseDialogue, List<GameChoice> choices, 
-                                         Map<String, Integer> stats) {
-        // This would check conditionalResponses in the choice
-        // For now, just return base dialogue
-        return baseDialogue;
+    private String extractPhaseFromSceneId(String sceneId) {
+        if (sceneId.contains("phase_1")) return "PHASE 1 - THE INTERVIEW";
+        if (sceneId.contains("phase_2")) return "PHASE 2 - THE REVELATION";
+        if (sceneId.contains("phase_3")) return "PHASE 3 - THE BREAKDOWN";
+        if (sceneId.contains("phase_4")) return "PHASE 4 - THE TRUTH";
+        if (sceneId.contains("phase_5")) return "PHASE 5 - THE CHOICE";
+        return "Unknown Phase";
     }
 
     /**
-     * Create an error state if something goes wrong
+     * Check if current state reaches an ending condition
      */
-    private GameState createErrorState(String message) {
-        return new GameState(
-            "ERROR",
-            message,
-            "...",
-            List.of("[Restart Game]"),
-            new ArrayList<>(),
-            createInitialStats(),
-            "error"
-        );
-    }
+    private boolean isEnding(String sceneId, Map<String, Integer> stats, 
+                           List<Map<String, Object>> endingConditions) {
+        // Simple check: if ending conditions list exists and scene matches
+        if (endingConditions == null || endingConditions.isEmpty()) {
+            return false;
+        }
 
+        for (Map<String, Object> condition : endingConditions) {
+            // Check if scene ID matches any ending scene
+            if (condition.get("sceneId") != null && 
+                condition.get("sceneId").equals(sceneId)) {
+                return true;
+            }
+        }
 
-
-    private boolean checkEndingConditions(Map<String, Integer> stats) {
-    int denial = stats.get("denial");
-    int guilt = stats.get("guilt");
-    int confusion = stats.get("confusion");
-    int enlightenment = stats.get("enlightenment");
-    
-    // Check Ending A: Acceptance
-    if (guilt >= 65 && denial <= 35 && enlightenment <= 60) {
-        return true;  // Trigger Ending A
+        return false;
     }
-    
-    // Check Ending B: Denial
-    if (denial >= 70) {
-        return true;  // Trigger Ending B
-    }
-    
-    // Check Ending C: Awakening
-    if (enlightenment >= 70 && confusion >= 65 && denial <= 50) {
-        return true;  // Trigger Ending C
-    }
-    
-    // Check Ending D: Willing Return
-    if (enlightenment >= 70 && guilt >= 65 && confusion <= 55) {
-        return true;  // Trigger Ending D
-    }
-    
-    return false;
-    }
-
-
 }

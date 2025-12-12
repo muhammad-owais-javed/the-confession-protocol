@@ -1,0 +1,6 @@
+com/protocol/confession/dto/GameState.class
+com/protocol/confession/ConfessionApplication.class
+com/protocol/confession/config/CorsConfig.class
+com/protocol/confession/controller/GameController.class
+com/protocol/confession/service/GameService.class
+com/protocol/confession/dto/ConversationHistory.class
