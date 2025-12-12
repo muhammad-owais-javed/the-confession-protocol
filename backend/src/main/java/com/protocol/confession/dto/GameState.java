@@ -1,3 +1,5 @@
+
+
 package com.protocol.confession.dto;
 
 import java.util.ArrayList;
@@ -8,6 +10,7 @@ import java.util.Map;
 public class GameState {
 
     private String currentPhase;
+    private String sceneName;           // ADD THIS
     private String narrativeText;
     private String subjectDialogue;
     private List<String> availableChoices;
@@ -17,105 +20,97 @@ public class GameState {
     private String currentSceneId;
     private String chosenText;
 
+    // NEW FIELDS FOR VISUALS - ADD THESE
+    private String backgroundImage;
+    private Map<String, String> characterImages;
+    private List<String> introImages;
+    private String backgroundMusic;
+    private Double musicVolume;
+    private String dialogueSound;
+    private Map<String, Object> narrativeSounds;
+    private Boolean isEnding;
+    // END NEW FIELDS
 
-
-    // Making default constructor to avoid serialization scenarios failure
-     public GameState() {
-
+    public GameState() {
         this.conversationHistory = List.of();
         this.psychologicalStats = new HashMap<>();
         this.currentSceneId = null;
-
-
-    }   
-
-    public GameState(String currentPhase, String narrativeText, String subjectDialogue, 
-                 List<String> availableChoices, List<ConversationHistory> conversationHistory, String currentSceneId) {
-        this(currentPhase, narrativeText, subjectDialogue, availableChoices, conversationHistory, new HashMap<>(), currentSceneId);
-    }
-    
-    public GameState(String currentPhase, String narrativeText, String subjectDialogue, 
-                 List<String> availableChoices, List<ConversationHistory> conversationHistory,
-                 Map<String, Integer> psychologicalStats, String currentSceneId) {
-        this.currentPhase = currentPhase;
-        this.narrativeText = narrativeText;
-        this.subjectDialogue = subjectDialogue;
-        this.availableChoices = availableChoices;
-        this.conversationHistory = conversationHistory;
-        this.psychologicalStats = psychologicalStats;
-        this.currentSceneId = currentSceneId;
-
+        this.characterImages = new HashMap<>();
+        this.introImages = new ArrayList<>();
     }
 
+    // ... KEEP ALL EXISTING CONSTRUCTORS AND GETTERS/SETTERS ...
 
-    public String getCurrentPhase() {
-        return currentPhase;
+    // ADD NEW GETTERS AND SETTERS
+    public String getSceneName() {
+        return sceneName;
     }
 
-    public String getNarrativeText() {
-        return narrativeText;
+    public void setSceneName(String sceneName) {
+        this.sceneName = sceneName;
     }
 
-    
-    public String getSubjectDialogue() {
-        return subjectDialogue;
+    public String getBackgroundImage() {
+        return backgroundImage;
     }
 
-    public List<String> getAvailableChoices() {
-        return availableChoices;
+    public void setBackgroundImage(String backgroundImage) {
+        this.backgroundImage = backgroundImage;
     }
 
-    public List<ConversationHistory> getConversationHistory() {
-        return conversationHistory;
+    public Map<String, String> getCharacterImages() {
+        return characterImages;
     }
 
-    public void setCurrentPhase(String currentPhase) {
-        this.currentPhase = currentPhase;
+    public void setCharacterImages(Map<String, String> characterImages) {
+        this.characterImages = characterImages;
     }
 
-    public void setNarrativeText(String narrativeText) {
-        this.narrativeText = narrativeText;
+    public List<String> getIntroImages() {
+        return introImages;
     }
 
-    public void setSubjectDialogue(String subjectDialogue) {
-        this.subjectDialogue = subjectDialogue;
+    public void setIntroImages(List<String> introImages) {
+        this.introImages = introImages;
     }
 
-    public void setAvailableChoices(List<String> availableChoices) {
-        this.availableChoices = availableChoices;
+    public String getBackgroundMusic() {
+        return backgroundMusic;
     }
 
-    public void setConversationHistory(List<ConversationHistory> conversationHistory) {
-        this.conversationHistory = conversationHistory;
-    }
-    
-    public Map<String, Integer> getPsychologicalStats() {
-    return psychologicalStats;
+    public void setBackgroundMusic(String backgroundMusic) {
+        this.backgroundMusic = backgroundMusic;
     }
 
-    public void setPsychologicalStats(Map<String, Integer> psychologicalStats) {
-    this.psychologicalStats = psychologicalStats;
+    public Double getMusicVolume() {
+        return musicVolume;
     }
 
-
-    public GameState(String currentPhase, List<String> availableChoices){
-        this(currentPhase,"", "...", availableChoices, new ArrayList<>(), new HashMap<>(), null);
+    public void setMusicVolume(Double musicVolume) {
+        this.musicVolume = musicVolume;
     }
 
-    public String getChosenText() {
-    return chosenText;
-}
-
-    public void setChosenText(String chosenText) {
-    this.chosenText = chosenText;
-}
-
-    public String getCurrentSceneId() {
-    return currentSceneId;
-
+    public String getDialogueSound() {
+        return dialogueSound;
     }
 
-    public void setCurrentSceneId(String currentSceneId) {
-    this.currentSceneId = currentSceneId;
+    public void setDialogueSound(String dialogueSound) {
+        this.dialogueSound = dialogueSound;
+    }
+
+    public Map<String, Object> getNarrativeSounds() {
+        return narrativeSounds;
+    }
+
+    public void setNarrativeSounds(Map<String, Object> narrativeSounds) {
+        this.narrativeSounds = narrativeSounds;
+    }
+
+    public Boolean getIsEnding() {
+        return isEnding;
+    }
+
+    public void setIsEnding(Boolean isEnding) {
+        this.isEnding = isEnding;
     }
 }
