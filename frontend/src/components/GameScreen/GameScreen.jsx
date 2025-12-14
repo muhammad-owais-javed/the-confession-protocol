@@ -1,25 +1,56 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PhaseIntroScreen from '../PhaseIntroScreen/PhaseIntroScreen';
 import './GameScreen.css';
 
-const GameScreen = ({ gameState, onChoice, onRestart }) => {
+const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
   const [displayedNarrative, setDisplayedNarrative] = useState('');
-  const [displayedDialogue, setDisplayedDialogue] = useState('');
+  const [displayedAuditorDialogue, setDisplayedAuditorDialogue] = useState('');
+  const [displayedSubjectDialogue, setDisplayedSubjectDialogue] = useState('');
   const [choicesVisible, setChoicesVisible] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedChoiceIndex, setSelectedChoiceIndex] = useState(null);
   const [showStats, setShowStats] = useState(false);
+  const [showPhaseIntro, setShowPhaseIntro] = useState(true);
 
   const narrativeRef = useRef(null);
-  const dialogueRef = useRef(null);
   const typewriterTimerRef = useRef(null);
   const dialogueTimerRef = useRef(null);
 
-  // Typewriter effect for narrative
+  // Show phase intro only on FIRST intro scene of each phase
   useEffect(() => {
-    if (!gameState?.narrativeText) return;
+    if (gameState?.sceneId) {
+      // Only show intro if: it's an intro scene AND it has intro images AND we haven't shown intro yet
+      const isFirstSceneOfPhase = gameState?.sceneId?.includes('_scene_intro');
+      const hasIntroImages = gameState?.introImages?.length > 0;
+      
+      if (isFirstSceneOfPhase && hasIntroImages) {
+        setShowPhaseIntro(true);
+      } else {
+        setShowPhaseIntro(false);
+        // Start narrative immediately for non-intro scenes
+        startNarrativeTypewriter();
+      }
+    }
+  }, [gameState?.sceneId]);
+
+  const handlePhaseIntroComplete = () => {
+    setShowPhaseIntro(false);
+    setTimeout(() => {
+      startNarrativeTypewriter();
+    }, 300);
+  };
+
+  // Typewriter effect for narrative
+  const startNarrativeTypewriter = () => {
+    if (!gameState?.narrativeText) {
+      startDialogueTypewriter();
+      return;
+    }
 
     setDisplayedNarrative('');
+    setDisplayedAuditorDialogue('');
+    setDisplayedSubjectDialogue('');
     setChoicesVisible(false);
     setSelectedChoiceIndex(null);
 
@@ -35,11 +66,45 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         startDialogueTypewriter();
       }
     }, 25);
+  };
 
-    return () => clearInterval(typewriterTimerRef.current);
+  useEffect(() => {
+    if (!gameState?.narrativeText) return;
+    if (showPhaseIntro) return;
+
+    // Clear any existing intervals
+    clearInterval(typewriterTimerRef.current);
+    clearInterval(dialogueTimerRef.current);
+
+    startNarrativeTypewriter();
+
+    return () => {
+      clearInterval(typewriterTimerRef.current);
+      clearInterval(dialogueTimerRef.current);
+    };
   }, [gameState?.narrativeText, gameState?.sceneId]);
 
   const startDialogueTypewriter = () => {
+    if (gameState?.auditorDialogue) {
+      let index = 0;
+      const text = gameState.auditorDialogue;
+      setDisplayedAuditorDialogue('');
+
+      dialogueTimerRef.current = setInterval(() => {
+        if (index < text.length) {
+          setDisplayedAuditorDialogue(text.substring(0, index + 1));
+          index++;
+        } else {
+          clearInterval(dialogueTimerRef.current);
+          startSubjectDialogue();
+        }
+      }, 25);
+    } else {
+      startSubjectDialogue();
+    }
+  };
+
+  const startSubjectDialogue = () => {
     if (!gameState?.subjectDialogue) {
       setChoicesVisible(true);
       return;
@@ -47,11 +112,11 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
 
     let index = 0;
     const text = gameState.subjectDialogue;
-    setDisplayedDialogue('');
+    setDisplayedSubjectDialogue('');
 
     dialogueTimerRef.current = setInterval(() => {
       if (index < text.length) {
-        setDisplayedDialogue(text.substring(0, index + 1));
+        setDisplayedSubjectDialogue(text.substring(0, index + 1));
         index++;
       } else {
         clearInterval(dialogueTimerRef.current);
@@ -63,7 +128,14 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
   const handleChoiceClick = async (choiceText, index) => {
     setSelectedChoiceIndex(index);
     setChoicesVisible(false);
+    setDisplayedNarrative('');
+    setDisplayedAuditorDialogue('');
+    setDisplayedSubjectDialogue('');
     setIsTransitioning(true);
+
+    // Clear any running typewriter intervals
+    clearInterval(typewriterTimerRef.current);
+    clearInterval(dialogueTimerRef.current);
 
     setTimeout(() => {
       onChoice(choiceText);
@@ -76,17 +148,37 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
       setDisplayedNarrative(gameState.narrativeText);
       clearInterval(typewriterTimerRef.current);
       startDialogueTypewriter();
-    } else if (displayedDialogue !== gameState?.subjectDialogue) {
-      setDisplayedDialogue(gameState.subjectDialogue);
+    } else if (displayedAuditorDialogue !== gameState?.auditorDialogue) {
+      setDisplayedAuditorDialogue(gameState.auditorDialogue);
+      clearInterval(dialogueTimerRef.current);
+      startSubjectDialogue();
+    } else if (displayedSubjectDialogue !== gameState?.subjectDialogue) {
+      setDisplayedSubjectDialogue(gameState.subjectDialogue);
       clearInterval(dialogueTimerRef.current);
       setChoicesVisible(true);
     }
   };
 
+  // Define all variables here BEFORE any conditional renders
   const backgroundImage = gameState?.backgroundImage || 'default-interrogation-room.jpg';
   const auditorImage = gameState?.characterImages?.auditor || 'auditor_neutral.png';
   const subjectImage = gameState?.characterImages?.subject || 'subject_calm.png';
+  const introImages = gameState?.introImages || [];
+  const phaseName = gameState?.currentPhase || 'PHASE';
 
+  // Check if we should show phase intro
+  if (showPhaseIntro && introImages && introImages.length > 0) {
+    return (
+      <PhaseIntroScreen
+        phaseName={phaseName}
+        introImages={introImages}
+        onComplete={handlePhaseIntroComplete}
+        duration={2500}
+      />
+    );
+  }
+
+  // Main game screen render
   return (
     <div className="game-screen-wrapper">
       {/* Cinematic Background */}
@@ -118,18 +210,25 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
 
         <div className="controls-group">
           <button 
-            className="icon-button stats-toggle"
+            className="icon-button"
             onClick={() => setShowStats(!showStats)}
             title="Toggle Stats"
           >
             📊
           </button>
           <button
-            className="icon-button audio-toggle"
+            className="icon-button"
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? 'Mute Audio' : 'Unmute Audio'}
           >
             {soundEnabled ? '🔊' : '🔇'}
+          </button>
+          <button
+            className="icon-button"
+            onClick={onHome}
+            title="Return to Home"
+          >
+            🏠
           </button>
         </div>
       </div>
@@ -140,15 +239,15 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         <div className="character-container auditor-container">
           <div className="character-silhouette-wrapper">
             <div className="character-glow auditor-glow" />
-<img
-  src={`/silhouettes/${auditorImage}`}
-  alt="Auditor"
-  className="character-silhouette auditor-silhouette"
-  onError={(e) => {
-    console.error('Failed to load image:', e.target.src);
-    e.target.style.display = 'none';
-  }}
-/>
+            <img
+              src={`/silhouettes/${auditorImage}`}
+              alt="Auditor"
+              className="character-silhouette auditor-silhouette"
+              onError={(e) => {
+                console.error('Failed to load image:', e.target.src);
+                e.target.style.display = 'none';
+              }}
+            />
           </div>
           <div className="character-label">AUDITOR 07</div>
         </div>
@@ -173,7 +272,7 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         <div className="focus-line" />
       </div>
 
-      {/* Narrative Text - Floating Top */}
+      {/* Narrative Text - Top Center */}
       {displayedNarrative && (
         <div className="narrative-panel" onClick={skipTypewriter}>
           <div className="narrative-text">
@@ -188,16 +287,32 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         </div>
       )}
 
-      {/* Dialogue Panel - Bottom Right */}
-      {displayedDialogue && (
-        <div className="dialogue-panel">
+      {/* Auditor Dialogue - Bottom Left */}
+      {displayedAuditorDialogue && (
+        <div className="auditor-dialogue-panel">
           <div className="dialogue-header">
-            <div className="speaker-indicator" />
-            <span className="speaker-name">SUBJECT</span>
+            <div className="speaker-indicator auditor-indicator" />
+            <span className="speaker-name auditor-speaker">AUDITOR</span>
           </div>
           <div className="dialogue-text">
-            "{displayedDialogue}
-            {displayedDialogue !== gameState?.subjectDialogue && (
+            "{displayedAuditorDialogue}
+            {displayedAuditorDialogue !== gameState?.auditorDialogue && (
+              <span className="cursor-blink">|</span>
+            )}"
+          </div>
+        </div>
+      )}
+
+      {/* Subject Dialogue - Bottom Right */}
+      {displayedSubjectDialogue && (
+        <div className="subject-dialogue-panel">
+          <div className="dialogue-header">
+            <div className="speaker-indicator subject-indicator" />
+            <span className="speaker-name subject-speaker">SUBJECT</span>
+          </div>
+          <div className="dialogue-text">
+            "{displayedSubjectDialogue}
+            {displayedSubjectDialogue !== gameState?.subjectDialogue && (
               <span className="cursor-blink">|</span>
             )}"
           </div>
@@ -238,11 +353,11 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         </div>
       </div>
 
-      {/* Choices Interface - Bottom Center */}
+      {/* Choices Interface - Center */}
       {choicesVisible && gameState?.availableChoices?.length > 0 && (
         <div className="choices-interface">
-          <div className="choices-prompt">Choose your approach...</div>
-          <div className="choices-grid">
+          <div className="choices-prompt">Choose your approach</div>
+          <div className="choices-vertical">
             {gameState.availableChoices.map((choice, index) => (
               <button
                 key={index}
@@ -270,7 +385,7 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
         </div>
       )}
 
-      {/* Scene Name - Subtle Bottom Left */}
+      {/* Scene Name - Bottom Left */}
       {gameState?.sceneName && (
         <div className="scene-nameplate">
           <div className="nameplate-line" />

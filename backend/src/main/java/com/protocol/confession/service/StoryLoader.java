@@ -138,100 +138,105 @@ public class StoryLoader {
      * Load a single phase file and cache all its scenes
      */
     private void loadPhaseFile(String phaseFileName) throws Exception {
-        InputStream inputStream = resourceLoader
-            .getResource("classpath:stories/phases/" + phaseFileName)
-            .getInputStream();
+    InputStream inputStream = resourceLoader
+        .getResource("classpath:stories/phases/" + phaseFileName)
+        .getInputStream();
 
-        // Use Gson to parse and extract all fields including visual ones
-        JsonElement element = JsonParser.parseReader(
-            new java.io.InputStreamReader(inputStream));
-        JsonObject phaseData = element.getAsJsonObject();
-        
-        // Extract phase-level visual fields
-        String backgroundMusic = null;
-        Double musicVolume = null;
-        List<String> introImages = null;
-        
-        if (phaseData.has("backgroundMusic")) {
-            backgroundMusic = phaseData.get("backgroundMusic").getAsString();
+    // Use Gson to parse and extract all fields including visual ones
+    JsonElement element = JsonParser.parseReader(
+        new java.io.InputStreamReader(inputStream));
+    JsonObject phaseData = element.getAsJsonObject();
+    
+    // Extract phase-level visual fields
+    String backgroundMusic = null;
+    Double musicVolume = null;
+    List<String> phaseIntroImages = null;
+    
+    if (phaseData.has("backgroundMusic")) {
+        backgroundMusic = phaseData.get("backgroundMusic").getAsString();
+    }
+    if (phaseData.has("musicVolume")) {
+        musicVolume = phaseData.get("musicVolume").getAsDouble();
+    }
+    if (phaseData.has("introImages")) {
+        JsonArray introArray = phaseData.getAsJsonArray("introImages");
+        phaseIntroImages = new java.util.ArrayList<>();
+        for (JsonElement img : introArray) {
+            phaseIntroImages.add(img.getAsString());
         }
-        if (phaseData.has("musicVolume")) {
-            musicVolume = phaseData.get("musicVolume").getAsDouble();
-        }
-        if (phaseData.has("introImages")) {
-            JsonArray introArray = phaseData.getAsJsonArray("introImages");
-            introImages = new java.util.ArrayList<>();
-            for (JsonElement img : introArray) {
-                introImages.add(img.getAsString());
-            }
-        }
-
-        // Load scenes
-        JsonArray scenesArray = phaseData.getAsJsonArray("scenes");
-        if (scenesArray != null) {
-            for (JsonElement sceneElement : scenesArray) {
-                JsonObject sceneJson = sceneElement.getAsJsonObject();
-                GameScene scene = gson.fromJson(sceneJson, GameScene.class);
-                
-                // Extract visual fields from scene JSON
-                if (sceneJson.has("backgroundImage")) {
-                    scene.setBackgroundImage(sceneJson.get("backgroundImage").getAsString());
-                }
-                
-                // Extract character images
-                if (sceneJson.has("characterImages")) {
-                    JsonObject charImages = sceneJson.getAsJsonObject("characterImages");
-                    Map<String, String> charMap = new HashMap<>();
-                    if (charImages.has("auditor")) {
-                        charMap.put("auditor", charImages.get("auditor").getAsString());
-                    }
-                    if (charImages.has("subject")) {
-                        charMap.put("subject", charImages.get("subject").getAsString());
-                    }
-                    scene.setCharacterImages(charMap);
-                }
-                
-                // Extract intro images (scene level)
-                if (sceneJson.has("introImages")) {
-                    JsonArray introArray = sceneJson.getAsJsonArray("introImages");
-                    List<String> sceneIntros = new java.util.ArrayList<>();
-                    for (JsonElement img : introArray) {
-                        sceneIntros.add(img.getAsString());
-                    }
-                    scene.setIntroImages(sceneIntros);
-                }
-                
-                // Extract music (scene level)
-                if (sceneJson.has("backgroundMusic")) {
-                    scene.setBackgroundMusic(sceneJson.get("backgroundMusic").getAsString());
-                }
-                if (sceneJson.has("musicVolume")) {
-                    scene.setMusicVolume(sceneJson.get("musicVolume").getAsDouble());
-                }
-                
-                // Extract sound effects
-                if (sceneJson.has("dialogueSound")) {
-                    scene.setDialogueSound(sceneJson.get("dialogueSound").getAsString());
-                }
-                if (sceneJson.has("narrativeSounds")) {
-                    JsonObject sounds = sceneJson.getAsJsonObject("narrativeSounds");
-                    Map<String, Object> soundMap = gson.fromJson(sounds, Map.class);
-                    scene.setNarrativeSounds(soundMap);
-                }
-                
-scenesCache.put(scene.getSceneId(), scene);
-System.out.println("  Scene loaded: " + scene.getSceneId() + " (" + 
-                 (scene.getChoices() != null ? scene.getChoices().size() : 0) + 
-                 " choices)");
-// DEBUG: Print visual fields
-System.out.println("    - backgroundImage: " + scene.getBackgroundImage());
-System.out.println("    - characterImages: " + scene.getCharacterImages());
-System.out.println("    - introImages: " + scene.getIntroImages());
-System.out.println("    - backgroundMusic: " + scene.getBackgroundMusic());
-            }
-        }
+        System.out.println("DEBUG: Phase-level introImages found: " + phaseIntroImages);
     }
 
+    // Load scenes
+    JsonArray scenesArray = phaseData.getAsJsonArray("scenes");
+    if (scenesArray != null) {
+        for (JsonElement sceneElement : scenesArray) {
+            JsonObject sceneJson = sceneElement.getAsJsonObject();
+            GameScene scene = gson.fromJson(sceneJson, GameScene.class);
+            
+            // Extract visual fields from scene JSON
+            if (sceneJson.has("backgroundImage")) {
+                scene.setBackgroundImage(sceneJson.get("backgroundImage").getAsString());
+            }
+            
+            // Extract character images
+            if (sceneJson.has("characterImages")) {
+                JsonObject charImages = sceneJson.getAsJsonObject("characterImages");
+                Map<String, String> charMap = new HashMap<>();
+                if (charImages.has("auditor")) {
+                    charMap.put("auditor", charImages.get("auditor").getAsString());
+                }
+                if (charImages.has("subject")) {
+                    charMap.put("subject", charImages.get("subject").getAsString());
+                }
+                scene.setCharacterImages(charMap);
+            }
+            
+            // Extract intro images (scene level first, then fall back to phase level)
+            if (sceneJson.has("introImages")) {
+                JsonArray introArray = sceneJson.getAsJsonArray("introImages");
+                List<String> sceneIntros = new java.util.ArrayList<>();
+                for (JsonElement img : introArray) {
+                    sceneIntros.add(img.getAsString());
+                }
+                scene.setIntroImages(sceneIntros);
+                System.out.println("    - introImages (scene-level): " + sceneIntros);
+            } else if (phaseIntroImages != null && !phaseIntroImages.isEmpty()) {
+                // If no scene-level introImages, use phase-level ones
+                scene.setIntroImages(phaseIntroImages);
+                System.out.println("    - introImages (phase-level): " + phaseIntroImages);
+            }
+            
+            // Extract music (scene level)
+            if (sceneJson.has("backgroundMusic")) {
+                scene.setBackgroundMusic(sceneJson.get("backgroundMusic").getAsString());
+            }
+            if (sceneJson.has("musicVolume")) {
+                scene.setMusicVolume(sceneJson.get("musicVolume").getAsDouble());
+            }
+            
+            // Extract sound effects
+            if (sceneJson.has("dialogueSound")) {
+                scene.setDialogueSound(sceneJson.get("dialogueSound").getAsString());
+            }
+            if (sceneJson.has("narrativeSounds")) {
+                JsonObject sounds = sceneJson.getAsJsonObject("narrativeSounds");
+                Map<String, Object> soundMap = gson.fromJson(sounds, Map.class);
+                scene.setNarrativeSounds(soundMap);
+            }
+            
+            scenesCache.put(scene.getSceneId(), scene);
+            System.out.println("  Scene loaded: " + scene.getSceneId() + " (" + 
+                             (scene.getChoices() != null ? scene.getChoices().size() : 0) + 
+                             " choices)");
+            // DEBUG: Print visual fields
+            System.out.println("    - backgroundImage: " + scene.getBackgroundImage());
+            System.out.println("    - characterImages: " + scene.getCharacterImages());
+            System.out.println("    - introImages: " + scene.getIntroImages());
+            System.out.println("    - backgroundMusic: " + scene.getBackgroundMusic());
+        }
+    }
+}
     /**
      * Load ending conditions from endings.json
      */
