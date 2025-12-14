@@ -1,8 +1,5 @@
-// src/components/GameScreen/GameScreen.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import './GameScreen.css';
-import { playSound } from '../../utils/soundHelper';
-import { playPhaseMusic, playSoundEffect, isAudioEnabledGlobal } from '../../utils/audioManager';
 
 const GameScreen = ({ gameState, onChoice, onRestart }) => {
   const [displayedNarrative, setDisplayedNarrative] = useState('');
@@ -11,23 +8,12 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedChoiceIndex, setSelectedChoiceIndex] = useState(null);
+  const [showStats, setShowStats] = useState(false);
 
   const narrativeRef = useRef(null);
   const dialogueRef = useRef(null);
   const typewriterTimerRef = useRef(null);
   const dialogueTimerRef = useRef(null);
-
-  // Initialize phase music on mount and when phase changes
-  useEffect(() => {
-
-
-      
-  if (gameState?.backgroundImage) {
-    console.log("Background image:", gameState.backgroundImage);
-    console.log("Character images:", gameState.characterImages);
-    }
-  }, [gameState?.backgroundImage]);
-
 
   // Typewriter effect for narrative
   useEffect(() => {
@@ -53,7 +39,6 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
     return () => clearInterval(typewriterTimerRef.current);
   }, [gameState?.narrativeText, gameState?.sceneId]);
 
-  // Typewriter effect for dialogue
   const startDialogueTypewriter = () => {
     if (!gameState?.subjectDialogue) {
       setChoicesVisible(true);
@@ -64,20 +49,6 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
     const text = gameState.subjectDialogue;
     setDisplayedDialogue('');
 
-    // Play dialogue sound if specified
-    if (gameState.dialogueSound && soundEnabled) {
-      playSoundEffect(gameState.dialogueSound, 0.5);
-    }
-
-    // Play narrative sound if specified
-    if (gameState.narrativeSounds?.soundEffect && soundEnabled) {
-      playSoundEffect(
-        gameState.narrativeSounds.soundEffect,
-        gameState.narrativeSounds.volume || 0.6,
-        gameState.narrativeSounds.delay || 0
-      );
-    }
-
     dialogueTimerRef.current = setInterval(() => {
       if (index < text.length) {
         setDisplayedDialogue(text.substring(0, index + 1));
@@ -85,16 +56,13 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
       } else {
         clearInterval(dialogueTimerRef.current);
         setChoicesVisible(true);
-        soundEnabled && playSound('dialogue-end');
       }
     }, 25);
   };
 
-  // Handle choice selection
   const handleChoiceClick = async (choiceText, index) => {
     setSelectedChoiceIndex(index);
     setChoicesVisible(false);
-    soundEnabled && playSound('choice-select');
     setIsTransitioning(true);
 
     setTimeout(() => {
@@ -103,200 +71,219 @@ const GameScreen = ({ gameState, onChoice, onRestart }) => {
     }, 300);
   };
 
-  // Skip typewriter
   const skipTypewriter = () => {
-    if (displayedNarrative !== gameState.narrativeText) {
+    if (displayedNarrative !== gameState?.narrativeText) {
       setDisplayedNarrative(gameState.narrativeText);
       clearInterval(typewriterTimerRef.current);
       startDialogueTypewriter();
-    } else if (displayedDialogue !== gameState.subjectDialogue) {
+    } else if (displayedDialogue !== gameState?.subjectDialogue) {
       setDisplayedDialogue(gameState.subjectDialogue);
       clearInterval(dialogueTimerRef.current);
       setChoicesVisible(true);
     }
   };
 
-  // Get background image
   const backgroundImage = gameState?.backgroundImage || 'default-interrogation-room.jpg';
   const auditorImage = gameState?.characterImages?.auditor || 'auditor_neutral.png';
   const subjectImage = gameState?.characterImages?.subject || 'subject_calm.png';
 
   return (
-    <div
-      className="game-screen"
-      style={{
-        backgroundImage: backgroundImage ? `url(/images/${backgroundImage})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
-      }}
-    >
-      {/* Background Overlay */}
-      <div className="game-background-overlay" />
+    <div className="game-screen-wrapper">
+      {/* Cinematic Background */}
+      <div className="cinematic-background">
+        <div 
+          className="background-layer"
+          style={{
+            backgroundImage: backgroundImage ? `url(/images/${backgroundImage})` : 'none'
+          }}
+        />
+        <div className="vignette-overlay" />
+        <div className="grain-overlay" />
+      </div>
 
-      {/* Header */}
-      <header className="game-header">
-        <div className="header-left">
-          <div className="room-label">ROOM 07</div>
-          <div className="phase-name">{gameState?.currentPhase}</div>
+      {/* Top UI Bar */}
+      <div className="top-ui-bar">
+        <div className="location-badge">
+          <div className="badge-icon">📍</div>
+          <div className="badge-content">
+            <div className="badge-label">LOCATION</div>
+            <div className="badge-value">ROOM 07</div>
+          </div>
         </div>
 
-        <div className="header-center">
-          <div className="scene-name">{gameState?.sceneName}</div>
+        <div className="phase-indicator">
+          <div className="phase-dot pulse" />
+          <span className="phase-text">{gameState?.currentPhase || 'INTERROGATION'}</span>
         </div>
 
-        <div className="header-right">
+        <div className="controls-group">
+          <button 
+            className="icon-button stats-toggle"
+            onClick={() => setShowStats(!showStats)}
+            title="Toggle Stats"
+          >
+            📊
+          </button>
           <button
-            className={`audio-toggle ${!soundEnabled ? 'muted' : ''}`}
+            className="icon-button audio-toggle"
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? 'Mute Audio' : 'Unmute Audio'}
           >
             {soundEnabled ? '🔊' : '🔇'}
           </button>
         </div>
-      </header>
-
-      {/* Character Silhouettes */}
-      <div className="characters-layer">
-        {/* Auditor - Left */}
-        <div className="character-position auditor-position">
-          <img
-            src={`/silhouettes/${auditorImage}`}
-            alt="Auditor"
-            className="character-silhouette auditor"
-            onError={(e) => {
-              e.target.src =
-                'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22300%22%3E%3Crect fill=%22%23333%22 width=%22150%22 height=%22300%22 opacity=%220.3%22/%3E%3C/svg%3E';
-            }}
-          />
-        </div>
-
-        {/* Subject - Right */}
-        <div className="character-position subject-position">
-          <img
-            src={`/silhouettes/${subjectImage}`}
-            alt="Subject"
-            className="character-silhouette subject"
-            onError={(e) => {
-              e.target.src =
-                'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22300%22%3E%3Crect fill=%22%23333%22 width=%22150%22 height=%22300%22 opacity=%220.3%22/%3E%3C/svg%3E';
-            }}
-          />
-        </div>
       </div>
 
-      {/* Main Game Content */}
-      <div className="game-main">
-        {/* Narrative Box */}
-        <div className="narrative-box" onClick={skipTypewriter}>
-          <div className="narrative-content" ref={narrativeRef}>
+      {/* Character Scene */}
+      <div className="character-scene">
+        {/* Auditor - Left Side */}
+        <div className="character-container auditor-container">
+          <div className="character-silhouette-wrapper">
+            <div className="character-glow auditor-glow" />
+<img
+  src={`/silhouettes/${auditorImage}`}
+  alt="Auditor"
+  className="character-silhouette auditor-silhouette"
+  onError={(e) => {
+    console.error('Failed to load image:', e.target.src);
+    e.target.style.display = 'none';
+  }}
+/>
+          </div>
+          <div className="character-label">AUDITOR 07</div>
+        </div>
+
+        {/* Subject - Right Side */}
+        <div className="character-container subject-container">
+          <div className="character-silhouette-wrapper">
+            <div className="character-glow subject-glow" />
+            <img
+              src={`/silhouettes/${subjectImage}`}
+              alt="Subject"
+              className="character-silhouette subject-silhouette"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          </div>
+          <div className="character-label">SUBJECT</div>
+        </div>
+
+        {/* Central Focus Line */}
+        <div className="focus-line" />
+      </div>
+
+      {/* Narrative Text - Floating Top */}
+      {displayedNarrative && (
+        <div className="narrative-panel" onClick={skipTypewriter}>
+          <div className="narrative-text">
             {displayedNarrative}
             {displayedNarrative !== gameState?.narrativeText && (
-              <span className="typewriter-cursor">█</span>
+              <span className="cursor-blink">|</span>
             )}
           </div>
-          <div className="click-hint">
-            {displayedNarrative !== gameState?.narrativeText && '(Click to skip)'}
-          </div>
-        </div>
-
-        {/* Subject's Dialogue */}
-        <div className="dialogue-box subject-dialogue">
-          <div className="dialogue-label">SUBJECT</div>
-          <div className="dialogue-content" ref={dialogueRef}>
-            <span className="quote-mark">"</span>
-            {displayedDialogue}
-            {displayedDialogue !== gameState?.subjectDialogue && (
-              <span className="typewriter-cursor">█</span>
-            )}
-            <span className="quote-mark">"</span>
-          </div>
-        </div>
-
-        {/* Stats Display */}
-        <div className="stats-display">
-          <div className="stat-bar">
-            <div className="stat-label">DENIAL</div>
-            <div className="stat-value">{gameState?.psychologicalStats?.denial || 0}</div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill denial"
-                style={{
-                  width: `${gameState?.psychologicalStats?.denial || 0}%`
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="stat-bar">
-            <div className="stat-label">GUILT</div>
-            <div className="stat-value">{gameState?.psychologicalStats?.guilt || 0}</div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill guilt"
-                style={{
-                  width: `${gameState?.psychologicalStats?.guilt || 0}%`
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="stat-bar">
-            <div className="stat-label">CONFUSION</div>
-            <div className="stat-value">{gameState?.psychologicalStats?.confusion || 0}</div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill confusion"
-                style={{
-                  width: `${gameState?.psychologicalStats?.confusion || 0}%`
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="stat-bar">
-            <div className="stat-label">ENLIGHTENMENT</div>
-            <div className="stat-value">{gameState?.psychologicalStats?.enlightenment || 0}</div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill enlightenment"
-                style={{
-                  width: `${gameState?.psychologicalStats?.enlightenment || 0}%`
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Choices */}
-        <div className="choices-container">
-          {choicesVisible && gameState?.availableChoices && gameState.availableChoices.length > 0 ? (
-            <div className="choices-list">
-              {gameState.availableChoices.map((choice, index) => (
-                <button
-                  key={index}
-                  className={`choice-button ${selectedChoiceIndex === index ? 'selected' : ''}`}
-                  onClick={() => handleChoiceClick(choice, index)}
-                  disabled={isTransitioning}
-                >
-                  <span className="choice-arrow">→</span>
-                  <span className="choice-text">{choice}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            !isTransitioning && (
-              <button className="choice-button restart-button" onClick={onRestart}>
-                <span className="choice-arrow">↺</span>
-                <span className="choice-text">Return to Menu</span>
-              </button>
-            )
+          {displayedNarrative !== gameState?.narrativeText && (
+            <div className="skip-hint">Click anywhere to skip</div>
           )}
+        </div>
+      )}
+
+      {/* Dialogue Panel - Bottom Right */}
+      {displayedDialogue && (
+        <div className="dialogue-panel">
+          <div className="dialogue-header">
+            <div className="speaker-indicator" />
+            <span className="speaker-name">SUBJECT</span>
+          </div>
+          <div className="dialogue-text">
+            "{displayedDialogue}
+            {displayedDialogue !== gameState?.subjectDialogue && (
+              <span className="cursor-blink">|</span>
+            )}"
+          </div>
+        </div>
+      )}
+
+      {/* Stats Overlay */}
+      <div className={`stats-overlay ${showStats ? 'visible' : ''}`}>
+        <div className="stats-panel">
+          <div className="stats-header">
+            <h3>PSYCHOLOGICAL PROFILE</h3>
+            <button className="close-stats" onClick={() => setShowStats(false)}>×</button>
+          </div>
+          <div className="stats-grid">
+            {[
+              { key: 'denial', label: 'DENIAL', color: '#ff4444' },
+              { key: 'guilt', label: 'GUILT', color: '#ff9944' },
+              { key: 'confusion', label: 'CONFUSION', color: '#ffdd44' },
+              { key: 'enlightenment', label: 'ENLIGHTENMENT', color: '#44ff88' }
+            ].map(stat => (
+              <div key={stat.key} className="stat-item">
+                <div className="stat-header-row">
+                  <span className="stat-name">{stat.label}</span>
+                  <span className="stat-value">{gameState?.psychologicalStats?.[stat.key] || 0}%</span>
+                </div>
+                <div className="stat-bar-container">
+                  <div 
+                    className="stat-bar-fill"
+                    style={{
+                      width: `${gameState?.psychologicalStats?.[stat.key] || 0}%`,
+                      background: `linear-gradient(90deg, ${stat.color}22, ${stat.color})`
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Transition Overlay */}
-      {isTransitioning && <div className="transition-overlay" />}
+      {/* Choices Interface - Bottom Center */}
+      {choicesVisible && gameState?.availableChoices?.length > 0 && (
+        <div className="choices-interface">
+          <div className="choices-prompt">Choose your approach...</div>
+          <div className="choices-grid">
+            {gameState.availableChoices.map((choice, index) => (
+              <button
+                key={index}
+                className={`choice-card ${selectedChoiceIndex === index ? 'selected' : ''}`}
+                onClick={() => handleChoiceClick(choice, index)}
+                disabled={isTransitioning}
+              >
+                <div className="choice-number">{String(index + 1).padStart(2, '0')}</div>
+                <div className="choice-content">{choice}</div>
+                <div className="choice-arrow">→</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No Choices - Return to Menu */}
+      {!choicesVisible && !isTransitioning && (!gameState?.availableChoices || gameState.availableChoices.length === 0) && (
+        <div className="choices-interface">
+          <button className="choice-card restart-card" onClick={onRestart}>
+            <div className="choice-number">↺</div>
+            <div className="choice-content">Return to Menu</div>
+            <div className="choice-arrow">→</div>
+          </button>
+        </div>
+      )}
+
+      {/* Scene Name - Subtle Bottom Left */}
+      {gameState?.sceneName && (
+        <div className="scene-nameplate">
+          <div className="nameplate-line" />
+          <span className="nameplate-text">{gameState.sceneName}</span>
+        </div>
+      )}
+
+      {/* Transition Effect */}
+      {isTransitioning && (
+        <div className="transition-effect">
+          <div className="transition-line" />
+        </div>
+      )}
     </div>
   );
 };
