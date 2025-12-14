@@ -47,83 +47,133 @@ public class GameService {
      * Process player choice and return next game state
      */
     public GameState processPlayerChoice(String chosenText, List<ConversationHistory> conversationHistory,
-                                        Map<String, Integer> currentStats, String currentSceneId) {
-        
-        // Get current scene
-        GameScene currentScene = storyLoader.getScene(currentSceneId);
-        if (currentScene == null) {
-            throw new RuntimeException("Scene not found: " + currentSceneId);
-        }
-
-        // Find the matching choice
-        GameChoice selectedChoice = null;
-        if (currentScene.getChoices() != null) {
-            for (GameChoice choice : currentScene.getChoices()) {
-                if (choice.getChoiceText().equals(chosenText)) {
-                    selectedChoice = choice;
-                    break;
-                }
-            }
-        }
-
-        if (selectedChoice == null) {
-            throw new RuntimeException("Choice not found: " + chosenText);
-        }
-
-         // Apply stat modifiers
-        Map<String, Integer> updatedStats = new HashMap<>(currentStats);
-        StatModifier statModifiers = selectedChoice.getStatModifiers();
-        if (statModifiers != null) {
-            // Apply each stat modifier
-            if (statModifiers.getDenial() != null) {
-                int currentValue = updatedStats.getOrDefault("denial", 0);
-                updatedStats.put("denial", Math.max(0, Math.min(100, currentValue + statModifiers.getDenial())));
-            }
-            if (statModifiers.getGuilt() != null) {
-                int currentValue = updatedStats.getOrDefault("guilt", 0);
-                updatedStats.put("guilt", Math.max(0, Math.min(100, currentValue + statModifiers.getGuilt())));
-            }
-            if (statModifiers.getConfusion() != null) {
-                int currentValue = updatedStats.getOrDefault("confusion", 0);
-                updatedStats.put("confusion", Math.max(0, Math.min(100, currentValue + statModifiers.getConfusion())));
-            }
-            if (statModifiers.getEnlightenment() != null) {
-                int currentValue = updatedStats.getOrDefault("enlightenment", 0);
-                updatedStats.put("enlightenment", Math.max(0, Math.min(100, currentValue + statModifiers.getEnlightenment())));
-            }
-        }
-        
-
-        // Create conversation history entry
-        List<ConversationHistory> updatedHistory = new ArrayList<>(conversationHistory);
-        updatedHistory.add(new ConversationHistory(chosenText, "", ""));
-
-        // Get next scene
-        String nextSceneId = selectedChoice.getNextSceneId();
-        GameScene nextScene = storyLoader.getScene(nextSceneId);
-
-        if (nextScene == null) {
-            throw new RuntimeException("Next scene not found: " + nextSceneId);
-        }
-
-        // Create new game state
-        GameState gameState = new GameState();
-        gameState.setCurrentSceneId(nextSceneId);
-        gameState.setPsychologicalStats(updatedStats);
-        gameState.setConversationHistory(updatedHistory);
-
-        // Map scene data to game state
-        mapSceneToGameState(nextScene, gameState, updatedStats);
-
-        // Check if this is an ending
-        List<Map<String, Object>> endingConditions = storyLoader.getEndingConditions();
-        if (isEnding(nextSceneId, updatedStats, endingConditions)) {
-            gameState.setIsEnding(true);
-        }
-
-        return gameState;
+                                    Map<String, Integer> currentStats, String currentSceneId) {
+    
+    // Get current scene
+    GameScene currentScene = storyLoader.getScene(currentSceneId);
+    if (currentScene == null) {
+        throw new RuntimeException("Scene not found: " + currentSceneId);
     }
 
+    // Find the matching choice
+    GameChoice selectedChoice = null;
+    if (currentScene.getChoices() != null) {
+        for (GameChoice choice : currentScene.getChoices()) {
+            if (choice.getChoiceText().equals(chosenText)) {
+                selectedChoice = choice;
+                break;
+            }
+        }
+    }
+
+    if (selectedChoice == null) {
+        throw new RuntimeException("Choice not found: " + chosenText);
+    }
+
+    // Apply stat modifiers
+    Map<String, Integer> updatedStats = new HashMap<>(currentStats);
+    StatModifier statModifiers = selectedChoice.getStatModifiers();
+    if (statModifiers != null) {
+        if (statModifiers.getDenial() != null) {
+            int currentValue = updatedStats.getOrDefault("denial", 0);
+            updatedStats.put("denial", Math.max(0, Math.min(100, currentValue + statModifiers.getDenial())));
+        }
+        if (statModifiers.getGuilt() != null) {
+            int currentValue = updatedStats.getOrDefault("guilt", 0);
+            updatedStats.put("guilt", Math.max(0, Math.min(100, currentValue + statModifiers.getGuilt())));
+        }
+        if (statModifiers.getConfusion() != null) {
+            int currentValue = updatedStats.getOrDefault("confusion", 0);
+            updatedStats.put("confusion", Math.max(0, Math.min(100, currentValue + statModifiers.getConfusion())));
+        }
+        if (statModifiers.getEnlightenment() != null) {
+            int currentValue = updatedStats.getOrDefault("enlightenment", 0);
+            updatedStats.put("enlightenment", Math.max(0, Math.min(100, currentValue + statModifiers.getEnlightenment())));
+        }
+    }
+
+    // Create conversation history entry
+    List<ConversationHistory> updatedHistory = new ArrayList<>(conversationHistory);
+    updatedHistory.add(new ConversationHistory(chosenText, "", ""));
+
+    // Get next scene ID
+    String nextSceneId = selectedChoice.getNextSceneId();
+
+    // ===== NEW: CHECK IF THIS IS THE ENDING TRIGGER =====
+    if ("ending_file_trigger".equals(nextSceneId)) {
+        System.out.println("DEBUG: Ending trigger reached. Final stats: " + updatedStats);
+        
+        // Determine which ending is earned
+        String earnedEndingId = determineEnding(updatedStats);
+        
+        if (earnedEndingId != null) {
+            nextSceneId = earnedEndingId;
+            System.out.println("DEBUG: Earned ending: " + earnedEndingId);
+        } else {
+            throw new RuntimeException("No ending condition met for stats: " + updatedStats);
+        }
+    }
+    // ===== END OF NEW CODE =====
+
+    // Get the (possibly updated) next scene
+    GameScene nextScene = storyLoader.getScene(nextSceneId);
+    if (nextScene == null) {
+        throw new RuntimeException("Next scene not found: " + nextSceneId);
+    }
+
+    // Create new game state
+    GameState gameState = new GameState();
+    gameState.setCurrentSceneId(nextSceneId);
+    gameState.setPsychologicalStats(updatedStats);
+    gameState.setConversationHistory(updatedHistory);
+
+    // Map scene data to game state
+    mapSceneToGameState(nextScene, gameState, updatedStats);
+
+    return gameState;
+}
+
+private String determineEnding(Map<String, Integer> stats) {
+    List<Map<String, Object>> endingConditions = storyLoader.getEndingConditions();
+    
+    if (endingConditions == null || endingConditions.isEmpty()) {
+        System.err.println("No ending conditions found");
+        return null;
+    }
+    
+    // Check each ending condition in order
+    for (Map<String, Object> ending : endingConditions) {
+        String endingId = (String) ending.get("endingId");
+        Map<String, Object> conditions = (Map<String, Object>) ending.get("conditions");
+        
+        if (conditionsAreMet(stats, conditions)) {
+            System.out.println("✓ Ending condition met: " + endingId);
+            return endingId;
+        }
+    }
+    
+    System.err.println("No ending condition met for stats: " + stats);
+    return null;
+}
+
+/**
+ * Check if all stat conditions are satisfied for an ending
+ */
+private boolean conditionsAreMet(Map<String, Integer> stats, Map<String, Object> conditions) {
+    for (String statName : conditions.keySet()) {
+        Map<String, Integer> range = (Map<String, Integer>) conditions.get(statName);
+        Integer min = range.get("min");
+        Integer max = range.get("max");
+        Integer currentValue = stats.getOrDefault(statName, 0);
+        
+        // If any stat doesn't meet its condition, return false
+        if (currentValue < min || currentValue > max) {
+            return false;
+        }
+    }
+    
+    return true;  // All stats meet conditions for this ending
+}
     /**
      * Map GameScene data to GameState
      * This includes all visual fields (background, characters, music, etc.)

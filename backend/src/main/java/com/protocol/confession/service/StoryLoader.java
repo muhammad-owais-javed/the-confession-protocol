@@ -79,8 +79,61 @@ public class StoryLoader {
             System.err.println("✗ Error loading story: " + e.getMessage());
             e.printStackTrace();
         }
+
+         try {
+        // ... existing code for loading index, phases, endings ...
+        
+        // Load ending scenes - ADD THIS
+        loadEndingScenesFile();
+
+        isLoaded = true;
+        System.out.println("✓ Story loaded successfully. Total scenes: " + scenesCache.size());
+
+    } catch (Exception e) {
+        System.err.println("✗ Error loading story: " + e.getMessage());
+        e.printStackTrace();
     }
 
+    }
+
+    private void loadEndingScenesFile() throws Exception {
+    try {
+        InputStream endingScenesStream = resourceLoader
+            .getResource("classpath:stories/endings_scenes.json")
+            .getInputStream();
+
+        Map<String, Object> endingScenesData = mapper.readValue(endingScenesStream, Map.class);
+        List<Map<String, Object>> endingScenes = (List<Map<String, Object>>) endingScenesData.get("endingScenes");
+
+        System.out.println("DEBUG: Found " + (endingScenes != null ? endingScenes.size() : 0) + " ending scenes");
+
+        if (endingScenes != null) {
+            for (Map<String, Object> sceneData : endingScenes) {
+                try {
+                    GameScene scene = mapper.convertValue(sceneData, GameScene.class);
+                    System.out.println("DEBUG: Converting ending scene: " + sceneData.get("sceneId"));
+                    
+                    if (scene != null && scene.getSceneId() != null) {
+                        scenesCache.put(scene.getSceneId(), scene);
+                        System.out.println("✓ Ending scene cached: " + scene.getSceneId());
+                    } else {
+                        System.err.println("✗ Scene conversion failed or null for: " + sceneData.get("sceneId"));
+                    }
+                } catch (Exception e) {
+                    System.err.println("✗ Error converting ending scene: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        System.out.println("✓ Ending scenes loaded. Total scenes in cache: " + scenesCache.size());
+        System.out.println("DEBUG: All cached scene IDs: " + scenesCache.keySet());
+
+    } catch (Exception e) {
+        System.err.println("✗ Error loading ending scenes file: " + e.getMessage());
+        e.printStackTrace();
+    }
+}
     /**
      * Load a single phase file and cache all its scenes
      */
