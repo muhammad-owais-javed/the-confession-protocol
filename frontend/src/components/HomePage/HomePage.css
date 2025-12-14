@@ -495,7 +495,7 @@
 
 .footer-text {
   margin-top: 40px;
-  color: #000000;
+  color: #ca1c1c;
   font-size: 0.9rem;
   animation: fadeIn 0.8s ease-out 0.8s both;
 }
@@ -507,7 +507,7 @@
 
 .sub-footer {
   font-style: italic;
-  color: #4b5563;
+  color: #df2f2f;
   font-size: 0.85rem;
 }
 
