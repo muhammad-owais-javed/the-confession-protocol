@@ -1,4 +1,3 @@
-// src/components/PhaseIntroScreen/PhaseIntroScreen.jsx
 import React, { useEffect, useState } from 'react';
 import './PhaseIntroScreen.css';
 import { playSound } from '../../utils/soundHelper';
@@ -7,66 +6,68 @@ const PhaseIntroScreen = ({
   phaseName, 
   introImages = [], 
   onComplete,
-  duration = 2500 
+  duration = 1500
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [imageVisible, setImageVisible] = useState(false);
 
   useEffect(() => {
+    // If no images, skip intro entirely
+    if (!introImages || introImages.length === 0) {
+      onComplete();
+      return;
+    }
+
     // Phase heading appears immediately
     const headingDelay = setTimeout(() => {
       setImageVisible(true);
       playSound('phase-transition');
-    }, 500);
-
-    // Calculate total time needed
-    const imageTotalTime = introImages.length * duration;
-    const finalFadeOutTime = 1000;
-    const totalTime = imageTotalTime + finalFadeOutTime + 1000;
+    }, 300);
 
     // Cycle through images
-    if (introImages.length > 0) {
-      let currentIndex = 0;
-      const imageInterval = setInterval(() => {
-        currentIndex++;
-        if (currentIndex < introImages.length) {
-          setCurrentImageIndex(currentIndex);
-        } else {
-          clearInterval(imageInterval);
-          // Fade out
-          setTimeout(() => {
-            setIsVisible(false);
-            setTimeout(() => {
-              onComplete();
-            }, 500);
-          }, 1000);
-        }
-      }, duration);
-
-      return () => {
+    let currentIndex = 0;
+    const imageInterval = setInterval(() => {
+      currentIndex++;
+      
+      if (currentIndex < introImages.length) {
+        setCurrentImageIndex(currentIndex);
+      } else {
         clearInterval(imageInterval);
-        clearTimeout(headingDelay);
-      };
-    } else {
-      // No images, just heading
-      const timer = setTimeout(() => {
-        setIsVisible(false);
+        
+        // Fade out after showing all images
         setTimeout(() => {
-          onComplete();
-        }, 500);
-      }, 3000);
+          setIsVisible(false);
+          setTimeout(() => {
+            onComplete();
+          }, 500);
+        }, 800);
+      }
+    }, duration);
 
-      return () => clearTimeout(timer);
-    }
-  }, [introImages, duration, onComplete]);
+    // Cleanup
+    return () => {
+      clearInterval(imageInterval);
+      clearTimeout(headingDelay);
+    };
+  }, [introImages.length, duration]); // Minimal dependencies
+
+  const handleClick = (e) => {
+    e.preventDefault();
+    setIsVisible(false);
+    setTimeout(() => {
+      onComplete();
+    }, 300);
+  };
 
   return (
-    <div className={`phase-intro-screen ${isVisible ? 'visible' : 'hidden'}`}>
-      {/* Black Background */}
+    <div 
+      className={`phase-intro-screen ${isVisible ? 'visible' : 'hidden'}`}
+      onClick={handleClick}
+      style={{ cursor: 'pointer', userSelect: 'none' }}
+    >
       <div className="intro-background" />
 
-      {/* Phase Heading */}
       <div className="intro-content">
         <div className={`intro-heading-container ${imageVisible ? 'has-images' : ''}`}>
           <div className="intro-line intro-line-top" />
@@ -74,8 +75,7 @@ const PhaseIntroScreen = ({
           <div className="intro-line intro-line-bottom" />
         </div>
 
-        {/* Intro Images */}
-        {introImages.length > 0 && imageVisible && (
+        {introImages && introImages.length > 0 && imageVisible && (
           <div className="intro-images-container">
             {introImages.map((image, index) => (
               <img
@@ -90,6 +90,10 @@ const PhaseIntroScreen = ({
               />
             ))}
           </div>
+        )}
+
+        {imageVisible && introImages.length > 0 && (
+          <div className="intro-skip-hint">Click to skip</div>
         )}
       </div>
     </div>

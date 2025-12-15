@@ -179,11 +179,19 @@ private boolean conditionsAreMet(Map<String, Integer> stats, Map<String, Object>
      * This includes all visual fields (background, characters, music, etc.)
      */
     private void mapSceneToGameState(GameScene scene, GameState gameState, Map<String, Integer> stats) {
+        
+        gameState.setSceneId(scene.getSceneId());
+
         // Original fields
         gameState.setSceneName(scene.getSceneName());
         gameState.setNarrativeText(scene.getNarrative());
         gameState.setSubjectDialogue(scene.getSubjectDialogue());
         
+
+        boolean isEnding = scene.getSceneId().startsWith("ending_");
+        gameState.setIsEnding(isEnding);
+
+
         // Extract phase from scene ID (e.g., "phase_1_scene_intro" -> "PHASE 1 - THE INTERVIEW")
         String phaseFromSceneId = extractPhaseFromSceneId(scene.getSceneId());
         gameState.setCurrentPhase(phaseFromSceneId);

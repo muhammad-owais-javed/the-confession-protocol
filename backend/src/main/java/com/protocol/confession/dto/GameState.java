@@ -7,6 +7,7 @@ import java.util.Map;
 
 public class GameState {
 
+    private String sceneId;
     private String currentPhase;
     private String sceneName;
     private String narrativeText;
@@ -172,6 +173,16 @@ public class GameState {
     public Boolean getIsEnding() {
         return isEnding;
     }
+
+    public String getSceneId() {
+        return sceneId;
+    }
+    
+    // Setter
+    public void setSceneId(String sceneId) {
+        this.sceneId = sceneId;
+    }
+    
 
     // NEW SETTERS FOR VISUAL FIELDS
     public void setBackgroundImage(String backgroundImage) {

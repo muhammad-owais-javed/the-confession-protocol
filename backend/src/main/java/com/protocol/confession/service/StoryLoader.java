@@ -137,7 +137,7 @@ public class StoryLoader {
     /**
      * Load a single phase file and cache all its scenes
      */
-    private void loadPhaseFile(String phaseFileName) throws Exception {
+   private void loadPhaseFile(String phaseFileName) throws Exception {
     InputStream inputStream = resourceLoader
         .getResource("classpath:stories/phases/" + phaseFileName)
         .getInputStream();
@@ -170,6 +170,8 @@ public class StoryLoader {
     // Load scenes
     JsonArray scenesArray = phaseData.getAsJsonArray("scenes");
     if (scenesArray != null) {
+        boolean isFirstScene = true; // Track if this is the first scene of the phase
+        
         for (JsonElement sceneElement : scenesArray) {
             JsonObject sceneJson = sceneElement.getAsJsonObject();
             GameScene scene = gson.fromJson(sceneJson, GameScene.class);
@@ -193,6 +195,7 @@ public class StoryLoader {
             }
             
             // Extract intro images (scene level first, then fall back to phase level)
+            // CRITICAL: Only assign phase-level intro images to the FIRST scene
             if (sceneJson.has("introImages")) {
                 JsonArray introArray = sceneJson.getAsJsonArray("introImages");
                 List<String> sceneIntros = new java.util.ArrayList<>();
@@ -201,11 +204,16 @@ public class StoryLoader {
                 }
                 scene.setIntroImages(sceneIntros);
                 System.out.println("    - introImages (scene-level): " + sceneIntros);
-            } else if (phaseIntroImages != null && !phaseIntroImages.isEmpty()) {
-                // If no scene-level introImages, use phase-level ones
+            } else if (isFirstScene && phaseIntroImages != null && !phaseIntroImages.isEmpty()) {
+                // Only assign phase-level intro images to the first scene
                 scene.setIntroImages(phaseIntroImages);
-                System.out.println("    - introImages (phase-level): " + phaseIntroImages);
+                System.out.println("    - introImages (phase-level, FIRST SCENE ONLY): " + phaseIntroImages);
+            } else {
+                // All other scenes get empty intro images
+                scene.setIntroImages(new java.util.ArrayList<>());
             }
+            
+            isFirstScene = false; // After first scene, never assign phase-level intros again
             
             // Extract music (scene level)
             if (sceneJson.has("backgroundMusic")) {
@@ -236,7 +244,7 @@ public class StoryLoader {
             System.out.println("    - backgroundMusic: " + scene.getBackgroundMusic());
         }
     }
-}
+    }
     /**
      * Load ending conditions from endings.json
      */

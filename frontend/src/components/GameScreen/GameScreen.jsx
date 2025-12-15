@@ -3,129 +3,186 @@ import PhaseIntroScreen from '../PhaseIntroScreen/PhaseIntroScreen';
 import './GameScreen.css';
 
 const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
+  // UI State
+  const [showPhaseIntro, setShowPhaseIntro] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showStats, setShowStats] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [selectedChoiceIndex, setSelectedChoiceIndex] = useState(null);
+
+  // Text Display State
   const [displayedNarrative, setDisplayedNarrative] = useState('');
   const [displayedAuditorDialogue, setDisplayedAuditorDialogue] = useState('');
   const [displayedSubjectDialogue, setDisplayedSubjectDialogue] = useState('');
   const [choicesVisible, setChoicesVisible] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [selectedChoiceIndex, setSelectedChoiceIndex] = useState(null);
-  const [showStats, setShowStats] = useState(false);
-  const [showPhaseIntro, setShowPhaseIntro] = useState(true);
 
-  const narrativeRef = useRef(null);
-  const typewriterTimerRef = useRef(null);
-  const dialogueTimerRef = useRef(null);
+  // Refs for cleanup
+  const narrativeTimerRef = useRef(null);
+  const auditorTimerRef = useRef(null);
+  const subjectTimerRef = useRef(null);
 
-  // Show phase intro only on FIRST intro scene of each phase
-  useEffect(() => {
-    if (gameState?.sceneId) {
-      // Only show intro if: it's an intro scene AND it has intro images AND we haven't shown intro yet
-      const isFirstSceneOfPhase = gameState?.sceneId?.includes('_scene_intro');
-      const hasIntroImages = gameState?.introImages?.length > 0;
-      
-      if (isFirstSceneOfPhase && hasIntroImages) {
-        setShowPhaseIntro(true);
-      } else {
-        setShowPhaseIntro(false);
-        // Start narrative immediately for non-intro scenes
-        startNarrativeTypewriter();
-      }
-    }
-  }, [gameState?.sceneId]);
-
-  const handlePhaseIntroComplete = () => {
-    setShowPhaseIntro(false);
-    setTimeout(() => {
-      startNarrativeTypewriter();
-    }, 300);
-  };
-
-  // Typewriter effect for narrative
-  const startNarrativeTypewriter = () => {
-    if (!gameState?.narrativeText) {
-      startDialogueTypewriter();
+  // ============================================
+  // PHASE INTRO LOGIC
+  // ============================================
+   useEffect(() => {
+    // Guard against undefined or missing data
+    if (!gameState?.sceneId || !gameState?.narrativeText) {
+      console.log("DEBUG: Waiting for gameState to be fully loaded");
       return;
     }
 
+    // ALWAYS clear text display when scene changes
     setDisplayedNarrative('');
     setDisplayedAuditorDialogue('');
     setDisplayedSubjectDialogue('');
     setChoicesVisible(false);
     setSelectedChoiceIndex(null);
 
+    // Clear all timers
+    clearInterval(narrativeTimerRef.current);
+    clearInterval(auditorTimerRef.current);
+    clearInterval(subjectTimerRef.current);
+
+    // Check if this is an intro scene with images
+    const isIntroScene = gameState.sceneId.includes('_scene_intro');
+    const hasIntroImages = gameState.introImages && gameState.introImages.length > 0;
+
+    console.log("Scene changed:", gameState.sceneId, "IsIntro:", isIntroScene, "HasImages:", hasIntroImages);
+
+    if (isIntroScene && hasIntroImages) {
+      // Show intro screen
+      console.log("✓ Showing intro");
+      setShowPhaseIntro(true);
+    } else {
+      // Skip intro, go straight to narrative
+      console.log("✗ Skipping intro, starting narrative");
+      setShowPhaseIntro(false);
+      startNarrative();
+    }
+  }, [gameState?.sceneId, gameState?.narrativeText]); // Changed back to specific properties
+  // ============================================
+  // TYPEWRITER FUNCTIONS
+  // ============================================
+  const startNarrative = () => {
+    // Clear all existing timers
+    clearTimeout(narrativeTimerRef.current);
+    clearTimeout(auditorTimerRef.current);
+    clearTimeout(subjectTimerRef.current);
+
+    // Reset display
+    setDisplayedNarrative('');
+    setDisplayedAuditorDialogue('');
+    setDisplayedSubjectDialogue('');
+    setChoicesVisible(false);
+    setSelectedChoiceIndex(null);
+
+    // If no narrative, skip to dialogue
+    if (!gameState?.narrativeText) {
+      startAuditorDialogue();
+      return;
+    }
+
+    // Typewriter for narrative
     let index = 0;
     const text = gameState.narrativeText;
 
-    typewriterTimerRef.current = setInterval(() => {
+    narrativeTimerRef.current = setInterval(() => {
       if (index < text.length) {
-        setDisplayedNarrative(text.substring(0, index + 1));
+        setDisplayedNarrative(text.slice(0, index + 1));
         index++;
       } else {
-        clearInterval(typewriterTimerRef.current);
-        startDialogueTypewriter();
+        clearInterval(narrativeTimerRef.current);
+        startAuditorDialogue();
       }
-    }, 25);
+    }, 12);
   };
 
-  useEffect(() => {
-    if (!gameState?.narrativeText) return;
-    if (showPhaseIntro) return;
+  const startAuditorDialogue = () => {
+    clearTimeout(auditorTimerRef.current);
+    clearTimeout(subjectTimerRef.current);
 
-    // Clear any existing intervals
-    clearInterval(typewriterTimerRef.current);
-    clearInterval(dialogueTimerRef.current);
-
-    startNarrativeTypewriter();
-
-    return () => {
-      clearInterval(typewriterTimerRef.current);
-      clearInterval(dialogueTimerRef.current);
-    };
-  }, [gameState?.narrativeText, gameState?.sceneId]);
-
-  const startDialogueTypewriter = () => {
-    if (gameState?.auditorDialogue) {
-      let index = 0;
-      const text = gameState.auditorDialogue;
-      setDisplayedAuditorDialogue('');
-
-      dialogueTimerRef.current = setInterval(() => {
-        if (index < text.length) {
-          setDisplayedAuditorDialogue(text.substring(0, index + 1));
-          index++;
-        } else {
-          clearInterval(dialogueTimerRef.current);
-          startSubjectDialogue();
-        }
-      }, 25);
-    } else {
+    // If no auditor dialogue, skip to subject
+    if (!gameState?.auditorDialogue) {
       startSubjectDialogue();
+      return;
     }
+
+    // Typewriter for auditor
+    let index = 0;
+    const text = gameState.auditorDialogue;
+
+    auditorTimerRef.current = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedAuditorDialogue(text.slice(0, index + 1));
+        index++;
+      } else {
+        clearInterval(auditorTimerRef.current);
+        startSubjectDialogue();
+      }
+    }, 12);
   };
 
   const startSubjectDialogue = () => {
+    clearTimeout(subjectTimerRef.current);
+
+    // If no subject dialogue, show choices
     if (!gameState?.subjectDialogue) {
       setChoicesVisible(true);
       return;
     }
 
+    // Typewriter for subject
     let index = 0;
     const text = gameState.subjectDialogue;
-    setDisplayedSubjectDialogue('');
 
-    dialogueTimerRef.current = setInterval(() => {
+    subjectTimerRef.current = setInterval(() => {
       if (index < text.length) {
-        setDisplayedSubjectDialogue(text.substring(0, index + 1));
+        setDisplayedSubjectDialogue(text.slice(0, index + 1));
         index++;
       } else {
-        clearInterval(dialogueTimerRef.current);
+        clearInterval(subjectTimerRef.current);
         setChoicesVisible(true);
       }
-    }, 25);
+    }, 12);
   };
 
-  const handleChoiceClick = async (choiceText, index) => {
+  // ============================================
+  // SKIP TYPEWRITER
+  // ============================================
+  const skipTypewriter = () => {
+    if (displayedNarrative !== gameState?.narrativeText) {
+      // Skip narrative
+      setDisplayedNarrative(gameState.narrativeText);
+      clearInterval(narrativeTimerRef.current);
+      startAuditorDialogue();
+    } else if (displayedAuditorDialogue !== gameState?.auditorDialogue && gameState?.auditorDialogue) {
+      // Skip auditor dialogue
+      setDisplayedAuditorDialogue(gameState.auditorDialogue);
+      clearInterval(auditorTimerRef.current);
+      startSubjectDialogue();
+    } else if (displayedSubjectDialogue !== gameState?.subjectDialogue && gameState?.subjectDialogue) {
+      // Skip subject dialogue
+      setDisplayedSubjectDialogue(gameState.subjectDialogue);
+      clearInterval(subjectTimerRef.current);
+      setChoicesVisible(true);
+    }
+  };
+
+  // ============================================
+  // PHASE INTRO COMPLETE
+  // ============================================
+  const handleIntroComplete = () => {
+    setShowPhaseIntro(false);
+    // Small delay to ensure state updates
+    setTimeout(() => {
+      startNarrative();
+    }, 50);
+  };
+
+  // ============================================
+  // CHOICE CLICK
+  // ============================================
+  const handleChoiceClick = (choiceText, index) => {
     setSelectedChoiceIndex(index);
     setChoicesVisible(false);
     setDisplayedNarrative('');
@@ -133,61 +190,56 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
     setDisplayedSubjectDialogue('');
     setIsTransitioning(true);
 
-    // Clear any running typewriter intervals
-    clearInterval(typewriterTimerRef.current);
-    clearInterval(dialogueTimerRef.current);
+    // Clear all timers
+    clearInterval(narrativeTimerRef.current);
+    clearInterval(auditorTimerRef.current);
+    clearInterval(subjectTimerRef.current);
 
     setTimeout(() => {
       onChoice(choiceText);
       setIsTransitioning(false);
-    }, 300);
+    }, 150);
   };
 
-  const skipTypewriter = () => {
-    if (displayedNarrative !== gameState?.narrativeText) {
-      setDisplayedNarrative(gameState.narrativeText);
-      clearInterval(typewriterTimerRef.current);
-      startDialogueTypewriter();
-    } else if (displayedAuditorDialogue !== gameState?.auditorDialogue) {
-      setDisplayedAuditorDialogue(gameState.auditorDialogue);
-      clearInterval(dialogueTimerRef.current);
-      startSubjectDialogue();
-    } else if (displayedSubjectDialogue !== gameState?.subjectDialogue) {
-      setDisplayedSubjectDialogue(gameState.subjectDialogue);
-      clearInterval(dialogueTimerRef.current);
-      setChoicesVisible(true);
-    }
-  };
+  // ============================================
+  // CLEANUP
+  // ============================================
+  useEffect(() => {
+    return () => {
+      clearInterval(narrativeTimerRef.current);
+      clearInterval(auditorTimerRef.current);
+      clearInterval(subjectTimerRef.current);
+    };
+  }, []);
 
-  // Define all variables here BEFORE any conditional renders
-  const backgroundImage = gameState?.backgroundImage || 'default-interrogation-room.jpg';
-  const auditorImage = gameState?.characterImages?.auditor || 'auditor_neutral.png';
-  const subjectImage = gameState?.characterImages?.subject || 'subject_calm.png';
-  const introImages = gameState?.introImages || [];
-  const phaseName = gameState?.currentPhase || 'PHASE';
-
-  // Check if we should show phase intro
-  if (showPhaseIntro && introImages && introImages.length > 0) {
+  // ============================================
+  // IF SHOWING INTRO, ONLY RENDER THAT
+  // ============================================
+  if (showPhaseIntro) {
     return (
       <PhaseIntroScreen
-        phaseName={phaseName}
-        introImages={introImages}
-        onComplete={handlePhaseIntroComplete}
-        duration={2500}
+        phaseName={gameState?.currentPhase || 'PHASE'}
+        introImages={gameState?.introImages || []}
+        onComplete={handleIntroComplete}
+        duration={1500}
       />
     );
   }
 
-  // Main game screen render
+  // ============================================
+  // MAIN GAME SCREEN
+  // ============================================
+  const backgroundImage = gameState?.backgroundImage || 'default-interrogation-room.jpg';
+  const auditorImage = gameState?.characterImages?.auditor || 'auditor_neutral.png';
+  const subjectImage = gameState?.characterImages?.subject || 'subject_calm.png';
+
   return (
     <div className="game-screen-wrapper">
-      {/* Cinematic Background */}
+      {/* Background */}
       <div className="cinematic-background">
-        <div 
+        <div
           className="background-layer"
-          style={{
-            backgroundImage: backgroundImage ? `url(/images/${backgroundImage})` : 'none'
-          }}
+          style={{ backgroundImage: `url(/images/${backgroundImage})` }}
         />
         <div className="vignette-overlay" />
         <div className="grain-overlay" />
@@ -205,11 +257,11 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
 
         <div className="phase-indicator">
           <div className="phase-dot pulse" />
-          <span className="phase-text">{gameState?.currentPhase || 'INTERROGATION'}</span>
+          <span className="phase-text">{gameState?.currentPhase || 'PHASE'}</span>
         </div>
 
         <div className="controls-group">
-          <button 
+          <button
             className="icon-button"
             onClick={() => setShowStats(!showStats)}
             title="Toggle Stats"
@@ -219,60 +271,46 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
           <button
             className="icon-button"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            title={soundEnabled ? 'Mute Audio' : 'Unmute Audio'}
+            title={soundEnabled ? 'Mute' : 'Unmute'}
           >
             {soundEnabled ? '🔊' : '🔇'}
           </button>
-          <button
-            className="icon-button"
-            onClick={onHome}
-            title="Return to Home"
-          >
+          <button className="icon-button" onClick={onHome} title="Home">
             🏠
           </button>
         </div>
       </div>
 
-      {/* Character Scene */}
+      {/* Characters */}
       <div className="character-scene">
-        {/* Auditor - Left Side */}
         <div className="character-container auditor-container">
           <div className="character-silhouette-wrapper">
             <div className="character-glow auditor-glow" />
             <img
               src={`/silhouettes/${auditorImage}`}
               alt="Auditor"
-              className="character-silhouette auditor-silhouette"
-              onError={(e) => {
-                console.error('Failed to load image:', e.target.src);
-                e.target.style.display = 'none';
-              }}
+              className="character-silhouette"
             />
           </div>
           <div className="character-label">AUDITOR 07</div>
         </div>
 
-        {/* Subject - Right Side */}
         <div className="character-container subject-container">
           <div className="character-silhouette-wrapper">
             <div className="character-glow subject-glow" />
             <img
               src={`/silhouettes/${subjectImage}`}
               alt="Subject"
-              className="character-silhouette subject-silhouette"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
+              className="character-silhouette"
             />
           </div>
           <div className="character-label">SUBJECT</div>
         </div>
 
-        {/* Central Focus Line */}
         <div className="focus-line" />
       </div>
 
-      {/* Narrative Text - Top Center */}
+      {/* Narrative */}
       {displayedNarrative && (
         <div className="narrative-panel" onClick={skipTypewriter}>
           <div className="narrative-text">
@@ -282,12 +320,12 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
             )}
           </div>
           {displayedNarrative !== gameState?.narrativeText && (
-            <div className="skip-hint">Click anywhere to skip</div>
+            <div className="skip-hint">Click to skip</div>
           )}
         </div>
       )}
 
-      {/* Auditor Dialogue - Bottom Left */}
+      {/* Auditor Dialogue */}
       {displayedAuditorDialogue && (
         <div className="auditor-dialogue-panel">
           <div className="dialogue-header">
@@ -303,7 +341,7 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
         </div>
       )}
 
-      {/* Subject Dialogue - Bottom Right */}
+      {/* Subject Dialogue */}
       {displayedSubjectDialogue && (
         <div className="subject-dialogue-panel">
           <div className="dialogue-header">
@@ -319,31 +357,35 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
         </div>
       )}
 
-      {/* Stats Overlay */}
+      {/* Stats */}
       <div className={`stats-overlay ${showStats ? 'visible' : ''}`}>
         <div className="stats-panel">
           <div className="stats-header">
             <h3>PSYCHOLOGICAL PROFILE</h3>
-            <button className="close-stats" onClick={() => setShowStats(false)}>×</button>
+            <button className="close-stats" onClick={() => setShowStats(false)}>
+              ×
+            </button>
           </div>
           <div className="stats-grid">
             {[
               { key: 'denial', label: 'DENIAL', color: '#ff4444' },
               { key: 'guilt', label: 'GUILT', color: '#ff9944' },
               { key: 'confusion', label: 'CONFUSION', color: '#ffdd44' },
-              { key: 'enlightenment', label: 'ENLIGHTENMENT', color: '#44ff88' }
-            ].map(stat => (
+              { key: 'enlightenment', label: 'ENLIGHTENMENT', color: '#44ff88' },
+            ].map((stat) => (
               <div key={stat.key} className="stat-item">
                 <div className="stat-header-row">
                   <span className="stat-name">{stat.label}</span>
-                  <span className="stat-value">{gameState?.psychologicalStats?.[stat.key] || 0}%</span>
+                  <span className="stat-value">
+                    {gameState?.psychologicalStats?.[stat.key] || 0}%
+                  </span>
                 </div>
                 <div className="stat-bar-container">
-                  <div 
+                  <div
                     className="stat-bar-fill"
                     style={{
                       width: `${gameState?.psychologicalStats?.[stat.key] || 0}%`,
-                      background: `linear-gradient(90deg, ${stat.color}22, ${stat.color})`
+                      background: `linear-gradient(90deg, ${stat.color}22, ${stat.color})`,
                     }}
                   />
                 </div>
@@ -353,7 +395,7 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
         </div>
       </div>
 
-      {/* Choices Interface - Center */}
+      {/* Choices */}
       {choicesVisible && gameState?.availableChoices?.length > 0 && (
         <div className="choices-interface">
           <div className="choices-prompt">Choose your approach</div>
@@ -374,18 +416,20 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
         </div>
       )}
 
-      {/* No Choices - Return to Menu */}
-      {!choicesVisible && !isTransitioning && (!gameState?.availableChoices || gameState.availableChoices.length === 0) && (
-        <div className="choices-interface">
-          <button className="choice-card restart-card" onClick={onRestart}>
-            <div className="choice-number">↺</div>
-            <div className="choice-content">Return to Menu</div>
-            <div className="choice-arrow">→</div>
-          </button>
-        </div>
-      )}
+      {/* End Game */}
+      {!choicesVisible &&
+        !isTransitioning &&
+        (!gameState?.availableChoices || gameState.availableChoices.length === 0) && (
+          <div className="choices-interface">
+            <button className="choice-card restart-card" onClick={onRestart}>
+              <div className="choice-number">↺</div>
+              <div className="choice-content">Return to Menu</div>
+              <div className="choice-arrow">→</div>
+            </button>
+          </div>
+        )}
 
-      {/* Scene Name - Bottom Left */}
+      {/* Scene Name */}
       {gameState?.sceneName && (
         <div className="scene-nameplate">
           <div className="nameplate-line" />
@@ -393,7 +437,7 @@ const GameScreen = ({ gameState, onChoice, onRestart, onHome }) => {
         </div>
       )}
 
-      {/* Transition Effect */}
+      {/* Transition */}
       {isTransitioning && (
         <div className="transition-effect">
           <div className="transition-line" />
